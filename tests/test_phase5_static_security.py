@@ -24,21 +24,40 @@ def test_backend_security_headers_are_present():
         assert f'response.headers["{header}"]' in source
 
 
-def test_application_has_no_custom_node_application_servers_or_mjs_scripts():
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1]
-    custom_mjs = [path for path in root.rglob('*.mjs') if 'node_modules' not in path.parts and 'dist' not in path.parts]
-    assert custom_mjs == []
-    assert not (root / 'dev.mjs').exists()
-    assert not (root / 'serve.mjs').exists()
-    assert not (root / 'build.mjs').exists()
+def test_application_contains_no_typescript_or_node_build_toolchain():
+    assert not (ROOT / 'frontend').exists()
+    assert not (ROOT / 'package.json').exists()
+    assert not list(ROOT.rglob('package.json'))
+    assert not list(ROOT.rglob('*.ts'))
+    assert not list(ROOT.rglob('*.tsx'))
+    assert not (ROOT / 'scripts' / 'build.py').exists()
+    assert not (ROOT / 'public').exists()
+    assert (ROOT / 'app' / 'static' / 'js' / 'main.js').is_file()
+    assert (ROOT / 'app' / 'templates' / 'index.html').is_file()
 
 
-def test_frontend_package_manifest_has_no_node_application_scripts():
+def test_native_browser_javascript_uses_only_pinned_browser_imports():
+    html = (ROOT / 'app' / 'templates' / 'index.html').read_text()
+    assert 'type="importmap"' in html
+    assert 'firebase/ai' in html
+    assert 'pdfjs-dist@5.4.394' in html
+    assert 'mammoth@1.10.0' in html
+    assert 'type="module" src="/js/main.js"' in html
+
+
+def test_native_javascript_bare_imports_have_matching_browser_import_map_entries():
     import json
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1]
-    manifest = json.loads((root / 'frontend' / 'package.json').read_text())
-    assert 'scripts' not in manifest
-    assert 'firebase' in manifest['dependencies']
-    assert 'pdfjs-dist' in manifest['dependencies']
+    import re
+
+    html = (ROOT / "app" / "templates" / "index.html").read_text(encoding="utf-8")
+    match = re.search(r'<script type="importmap">\s*(\{.*?\})\s*</script>', html, re.S)
+    assert match is not None
+    imports = json.loads(match.group(1))["imports"]
+
+    required = set()
+    for path in (ROOT / "app" / "static" / "js").rglob("*.js"):
+        source = path.read_text(encoding="utf-8")
+        required.update(spec for spec in re.findall(r"from\s*['\"]([^'\"]+)['\"]", source) if not spec.startswith("."))
+    assert required <= set(imports)
+    assert "mammoth.browser.js" in html
+    assert "pdf.worker.mjs" in (ROOT / "app" / "static" / "js" / "lib" / "documents.js").read_text(encoding="utf-8")

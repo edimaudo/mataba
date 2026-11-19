@@ -2,9 +2,9 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CSS = (ROOT / "frontend" / "src" / "styles.css").read_text()
-MAIN = (ROOT / "frontend" / "src" / "main.ts").read_text()
-HTML = (ROOT / "frontend" / "index.html").read_text()
+CSS = (ROOT / "app" / "static" / "css" / "styles.css").read_text()
+MAIN = (ROOT / "app" / "static" / "js" / "main.js").read_text()
+HTML = (ROOT / "app" / "templates" / "index.html").read_text()
 
 
 def css_vars(block: str) -> dict[str, str]:
@@ -47,7 +47,7 @@ def test_report_tabs_have_required_roles_and_keyboard_navigation():
     assert 'role="tab"' in MAIN
     assert 'role="tabpanel"' in MAIN
     assert "['ArrowLeft', 'ArrowRight', 'Home', 'End']" in MAIN
-    assert "app!.querySelector<HTMLElement>(`[data-action=\"report-tab\"]" in MAIN
+    assert "app.querySelector(`[data-action=\"report-tab\"]" in MAIN
 
 
 def test_theme_and_font_scales_match_product_requirement():
@@ -98,7 +98,7 @@ def test_standalone_legal_qa_is_available_without_contract_upload():
     assert "legalQaView()" in MAIN
     assert 'data-form="legal-qa"' in MAIN
     assert 'No contract or uploaded document is required.' in MAIN
-    assert "callBackend<LegalQAResponse>('/api/legal-qa'" in MAIN
+    assert "callBackend('/api/legal-qa'" in MAIN
     assert "legalQa" in MAIN.split("function pageView()", 1)[1].split("function recentView()", 1)[0]
 
 
@@ -107,7 +107,7 @@ def test_legal_qa_result_heading_is_focusable_after_submission():
 
 
 def test_custom_404_page_has_home_and_legal_qa_navigation():
-    not_found = (ROOT / "frontend" / "404.html").read_text(encoding="utf-8")
+    not_found = (ROOT / "app" / "templates" / "404.html").read_text(encoding="utf-8")
     assert "404" in not_found
     assert 'href="/"' in not_found
     assert 'href="/qa"' in not_found

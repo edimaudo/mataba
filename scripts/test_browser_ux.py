@@ -13,9 +13,8 @@ import httpx
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "frontend"
 BASE_URL = os.getenv("MATAB_TEST_URL", "http://127.0.0.1:8080")
-AXE_SCRIPT = FRONTEND / "node_modules" / "axe-core" / "axe.min.js"
+AXE_SCRIPT_URL = "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.3/axe.min.js"
 
 
 def wait_for_server(url: str, timeout: float = 20.0) -> None:
@@ -31,11 +30,6 @@ def wait_for_server(url: str, timeout: float = 20.0) -> None:
 
 
 def main() -> int:
-    build = subprocess.run([sys.executable, str(ROOT / "scripts" / "build.py")], cwd=ROOT)
-    if build.returncode:
-        return build.returncode
-    if not AXE_SCRIPT.is_file():
-        raise RuntimeError(f"axe-core browser script missing: {AXE_SCRIPT}. Reinstall frontend dependencies.")
 
     server = None
     if not os.getenv("MATAB_TEST_URL"):
@@ -63,7 +57,7 @@ def main() -> int:
             page.route("https://fonts.gstatic.com/**", lambda route: route.abort())
             page.goto(BASE_URL, wait_until="domcontentloaded")
             page.locator(".local-entry").wait_for(state="visible")
-            page.add_script_tag(path=str(AXE_SCRIPT))
+            page.add_script_tag(url=AXE_SCRIPT_URL)
 
             axe_tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 

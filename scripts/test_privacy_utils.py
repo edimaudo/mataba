@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the real TypeScript privacy helpers in Chromium via Python Playwright."""
+"""Exercise the native JavaScript privacy helpers in Chromium via Python Playwright."""
 from __future__ import annotations
 
 import os
@@ -29,10 +29,6 @@ def wait_for_server(url: str, timeout: float = 20.0) -> None:
 
 
 def main() -> int:
-    build_result = subprocess.run([sys.executable, str(ROOT / "scripts" / "build.py")], cwd=ROOT)
-    if build_result.returncode:
-        return build_result.returncode
-
     server = None
     if not os.getenv("MATAB_TEST_URL"):
         server = subprocess.Popen([
@@ -47,9 +43,9 @@ def main() -> int:
             chromium_path = os.getenv("MATAB_CHROMIUM_EXECUTABLE") or shutil.which("chromium") or shutil.which("chromium-browser")
             browser = playwright.chromium.launch(headless=True, executable_path=chromium_path or None, args=["--no-sandbox"] if chromium_path else None)
             page = browser.new_page()
-            page.goto(BASE_URL, wait_until="domcontentloaded")
+            page.goto(BASE_URL + "/api/health", wait_until="domcontentloaded")
             actual = page.evaluate("""async () => {
-              const privacy = await import('/__tests__/privacy-utils.js');
+              const privacy = await import('/js/lib/privacy-utils.js');
               const assert = (condition, label) => { if (!condition) throw new Error(label); };
               let count = 0;
               assert(privacy.isValidCanadianSinCandidate('130 692 544') === true, 'valid SIN checksum'); count++;

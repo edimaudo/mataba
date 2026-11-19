@@ -11,14 +11,13 @@ def test_vercel_config_targets_fastapi_entrypoint_and_montreal_region():
     assert (ROOT / "app" / "main.py").is_file()
 
 
-def test_vercel_build_runs_frontend_build_without_creating_a_node_server():
+def test_vercel_does_not_run_a_frontend_or_node_build():
     config = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
-    command = config["buildCommand"]
-    assert "npm install --prefix frontend" in command
-    assert "python scripts/build.py" in command
-    package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
-    assert "scripts" not in package
-    assert not any(ROOT.glob("*.mjs"))
+    assert "buildCommand" not in config
+    assert not (ROOT / "frontend").exists()
+    assert not list(ROOT.rglob("package.json"))
+    assert not list(ROOT.rglob("*.ts"))
+    assert (ROOT / "app" / "static" / "js" / "main.js").is_file()
     assert not (ROOT / "backend").exists()
 
 
@@ -26,6 +25,8 @@ def test_vercel_function_includes_templates_and_excludes_dev_only_files():
     config = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
     function = config["functions"]["app/main.py"]
     assert "firebase/ai_logic_templates/**" in function["includeFiles"]
+    assert "app/templates/**" in function["includeFiles"]
+    assert "app/static/**" in function["includeFiles"]
     assert "tests/**" in function["excludeFiles"]
     assert "scripts/**" in function["excludeFiles"]
 

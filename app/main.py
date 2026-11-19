@@ -4,7 +4,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from pathlib import Path
-import os
 from .config import get_settings
 from .security import Identity, require_identity
 from .rate_limit import user_rate_limiter
@@ -19,15 +18,16 @@ from .services.legal_sources import LAW_SOURCES, retrieve_law_passages
 from .services.legal_qa import build_legal_qa_prompt, verify_legal_qa
 
 settings = get_settings()
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-FRONTEND_DIST = Path(os.environ.get("MATAB_STATIC_DIR", str(PROJECT_ROOT / "public"))).resolve()
+APP_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = APP_DIR / "templates"
+STATIC_DIR = APP_DIR / "static"
 
 
 app = FastAPI(
-    title="Mataba API",
-    version="2.9.2",
+    title="Mataba",
+    version="2.9.3",
     description=(
-        "Single Python application server for Mataba. FastAPI serves the vanilla frontend and API routes; "
+        "Python FastAPI application serving Mataba's pages, static JavaScript and API routes. "
         "Firebase AI Logic is the cloud inference integration."
     ),
     docs_url="/api/docs" if settings.environment != "production" else None,
@@ -258,35 +258,31 @@ async def answer_legal_question(
 
 @app.get("/qa", include_in_schema=False)
 @app.get("/", include_in_schema=False)
-async def frontend_index():
-    """Serve the compiled static frontend from the same FastAPI application."""
-    index_file = FRONTEND_DIST / "index.html"
+async def application_page():
+    """Serve Mataba's HTML page directly from the FastAPI application package."""
+    index_file = TEMPLATES_DIR / "index.html"
     if not index_file.is_file():
-        raise HTTPException(
-            status_code=503,
-            detail="Mataba frontend has not been built. Run: python scripts/build.py",
-        )
+        raise HTTPException(status_code=503, detail="Mataba application template is missing.")
     return FileResponse(index_file, media_type="text/html; charset=utf-8")
 
 
 @app.get("/{asset_path:path}", include_in_schema=False)
-async def frontend_assets(asset_path: str):
-    """Serve static frontend files without introducing a second web server."""
+async def static_assets(asset_path: str):
+    """Serve browser assets directly from app/static; no frontend build is required."""
     if asset_path == "api" or asset_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not found")
 
-    root = FRONTEND_DIST.resolve()
+    root = STATIC_DIR.resolve()
     candidate = (root / asset_path).resolve()
     if candidate != root and root not in candidate.parents:
         raise HTTPException(status_code=404, detail="Not found")
     if candidate.is_file():
         return FileResponse(candidate)
 
-    # Unknown browser paths receive the branded 404 document with a real 404
-    # status. Missing asset paths remain a plain 404 so browsers do not parse
-    # HTML as JavaScript, CSS, images or worker files.
+    # Unknown application routes receive a real HTTP 404 page. Missing asset
+    # paths remain a plain 404 so clients never parse HTML as JS or CSS.
     if asset_path and "." not in Path(asset_path).name:
-        not_found = root / "404.html"
+        not_found = TEMPLATES_DIR / "404.html"
         if not_found.is_file():
             return FileResponse(not_found, status_code=404, media_type="text/html; charset=utf-8")
     raise HTTPException(status_code=404, detail="Not found")

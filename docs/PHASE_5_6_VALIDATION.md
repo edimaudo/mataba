@@ -1,4 +1,4 @@
-# Phase 5–6 validation — Mataba 2.9.1
+# Phase 5–6 validation — Mataba 2.9.3
 
 ## Security and UX implementation retained
 
@@ -15,23 +15,23 @@
 - Mobile navigation dialog semantics, focus trap, Escape close, inert background and focus restoration.
 - Report tabs and keyboard navigation.
 - EN/FR navigation, font sizes, light/dark themes and responsive breakpoints.
-- 320px overflow checks.
-- axe-core WCAG 2.2 A/AA scans through Python Playwright.
+- 320px overflow support.
+- axe-core WCAG 2.2 A/AA browser scans through Python Playwright when run.
 
-## Vercel/source-layout changes
+## Current application layout
 
-- Removed the redundant top-level `backend/` directory; Python modules now live in the standard `app/` package.
-- Root `vercel.json` configures the `app/main.py` FastAPI Function in Montréal (`yul1`), build command, function file inclusion/exclusion and security/cache headers.
-- Root `requirements.txt` and `requirements-dev.txt` declare Python dependencies.
-- Python build script generates `public/`, which Vercel serves through its CDN.
+- Single Python FastAPI server in `app/main.py`.
+- HTML templates are stored in `app/templates/`.
+- CSS and plain JavaScript modules are stored in `app/static/`.
+- There is no separate frontend project, TypeScript, Node/npm build process or generated static directory.
+- Root `vercel.json` includes the templates and static files in the `app/main.py` function bundle and sets the function region to Montréal (`yul1`).
 - Firebase rules and prompt templates are stored under the root `firebase/` folder.
-- The same app routes and frontend asset URLs are retained.
 
 ## Local acceptance commands
 
 ```bash
 python -m pytest tests -q
-python scripts/validate_frontend.py
+python scripts/validate_static_assets.py
 python scripts/test_privacy_utils.py
 python scripts/test_browser_ux.py
 ```
@@ -45,4 +45,4 @@ python scripts/test_firebase_rules.py
 
 ## External validation still required
 
-Vercel CLI/build deployment and live browser checks must be run in the Vercel project. Confirm the Function region is `yul1`, the project root is the repository root, and environment variables are configured. Validate Firebase Admin authentication, App Check, Firebase AI Logic template permissions and the model's Canadian region/consumption mode in the client's staging project before production.
+Vercel deployment and live browser checks must be run in the client's project. Confirm the Function region is `yul1`, environment variables are configured, static files are served, and Firebase Admin, App Check, Firebase AI Logic template permissions and the model's Canadian processing location are valid before production.

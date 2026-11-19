@@ -1,32 +1,30 @@
 # Deploy Mataba to Vercel
 
-The project is a single FastAPI application. Vercel detects `app/main.py`; there is no `backend/` project root and no separate API service.
+Mataba is a single Python + FastAPI application. Its HTML templates, CSS and native JavaScript files live inside `app/` and are served by FastAPI. There is no separate frontend project or build command.
 
 ## Included configuration
 
 The repository-root `vercel.json` configures:
 
-- FastAPI entrypoint: `app/main.py`.
-- Function region: `yul1` (Montréal).
-- Build command: install the browser dependencies and run the Python TypeScript build script.
-- Include the Firebase AI Logic prompt templates and generated `public/` assets in the function bundle.
-- Exclude tests, scripts, frontend source and installed packages from the deployed Python function.
-- `Cache-Control: no-store` on API responses and default security headers.
+- FastAPI application: `app/main.py`.
+- Function region: Montréal (`yul1`).
+- Inclusion of `app/templates/**`, `app/static/**` and `firebase/ai_logic_templates/**` in the function bundle.
+- Exclusion of tests, scripts and documentation from the deployed function bundle.
+- `Cache-Control: no-store` on API responses and baseline response security headers.
 
-Vercel automatically serves files in root `public/` through its CDN. The application build creates that directory from `frontend/`.
+There is no Node.js/npm step and no generated static directory.
 
 ## Deploy through the Vercel dashboard
 
 1. Push the repository to the client's Git provider.
 2. Import the repository in Vercel.
 3. Leave **Root Directory** set to the repository root.
-4. Vercel detects the FastAPI app at `app/main.py`.
-5. Add the variables from `.env.example` in **Project → Settings → Environment Variables**.
-6. Set `ENVIRONMENT=production`.
-7. Set `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64` to the base64 value of the Google service-account JSON. Mark it as sensitive. Do not use a client-side config file for this credential.
-8. Confirm the Function Region is `yul1` (Montréal). The checked-in `vercel.json` also sets this value.
-9. Deploy a Preview and test the frontend, the custom `/404.html` response, `/qa`, `/api/health`, sign-in, App Check, official-law retrieval and a staging Firebase AI Logic request using the `mataba-legal-qa-v1` template.
-10. Deploy to Production only after regional inference and privacy checks pass.
+4. Configure the variables from `.env.example` in **Project → Settings → Environment Variables**.
+5. Set `ENVIRONMENT=production`.
+6. Set `GOOGLE_SERVICE_ACCOUNT_JSON_BASE64` to the base64-encoded service-account JSON. Mark it as sensitive. Never place this credential in `app/static/config.js`.
+7. Confirm that the Function Region is `yul1` (Montréal).
+8. Deploy a Preview and test `/`, `/qa`, `/api/health`, the custom 404 behavior, authentication, App Check, official-law retrieval and a staging Firebase AI Logic request.
+9. Promote to Production only after regional inference and privacy checks pass.
 
 ## Create the service-account environment value
 
@@ -42,7 +40,7 @@ The service account must have only the permissions required for Firebase Admin t
 
 ## Deploy with Vercel CLI
 
-The Vercel CLI is an external deployment tool, not part of Mataba's runtime. Install and authenticate it according to Vercel's current instructions. Then run from the repository root:
+The Vercel CLI is an external deployment tool, not part of Mataba's runtime. Install and authenticate it separately, then run from the repository root:
 
 ```bash
 vercel link
@@ -57,4 +55,4 @@ vercel deploy --prod
 
 ## Regional-processing distinction
 
-`yul1` configures the Vercel FastAPI Function to execute in Montréal. Firebase AI Logic separately uses `northamerica-northeast1`. Both regional settings must be checked in the live project. Static assets in `public/` are delivered by Vercel's global CDN; no contract text or customer records are stored in those static assets.
+`yul1` configures the Vercel FastAPI Function to execute in Montréal. Firebase AI Logic separately uses its configured model location. Both must be checked in the live project. Browser libraries are loaded from the fixed CDN URLs listed in `app/templates/index.html`; contract text and customer records are not placed in those public scripts or stylesheets.
