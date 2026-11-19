@@ -96,16 +96,10 @@ async function loadUserData() {
     render();
 }
 async function refreshData() { await loadUserData(); }
-function enterPreview() {
-    state.user = { uid: 'preview', email: 'local-preview', displayName: 'Local preview' };
-    state.section = 'recent';
-    state.activeReviewId = null;
-    void loadUserData();
-}
 async function exitSession() {
-    if (window.location.pathname === '/qa')
-        history.replaceState({}, '', '/');
-    if (auth && state.user && state.user.uid !== 'preview')
+    if (window.location.pathname === '/qa' || window.location.pathname === '/app')
+        history.replaceState({}, '', '/signin');
+    if (auth && state.user)
         await signOut(auth);
     state.user = null;
     state.reviews = [];
@@ -120,13 +114,18 @@ async function exitSession() {
 function authView() {
     const fr = state.language === 'fr';
     const modeLabel = state.authMode === 'signin' ? t(state.language, 'signIn') : t(state.language, 'createAccount');
-    return `<main class="auth-layout" id="main-content" tabindex="-1">
-    <section class="auth-side-panel"><div class="auth-brand"><span class="brand-mark">m</span><span>Mataba</span></div><div class="auth-pitch"><div class="auth-overline">${fr ? 'EXAMEN DE CONTRATS CANADIENS' : 'CANADIAN CONTRACT REVIEW'}</div><h1>${t(state.language, 'tagline')}</h1><p>${fr ? 'Des explications claires. Des extraits de sources traçables. Les renseignements sensibles sont masqués dans votre navigateur avant toute analyse infonuagique.' : 'Clear explanations. Traceable source excerpts. Sensitive information is masked in your browser before any cloud analysis.'}</p></div><div class="auth-foot">${t(state.language, 'privacyDisclaimer')}</div></section>
-    <section class="auth-form-side"><div class="auth-form-wrap"><div class="auth-language"><button class="language-button" data-action="toggle-language">${state.language === 'fr' ? 'FR' : 'EN'} ⇄</button></div><span class="eyebrow">MATABA</span><h2>${t(state.language, 'signInTitle')}</h2><p class="muted">${t(state.language, 'signInText')}</p>
-      ${state.authError ? `<div class="notice notice-error" role="alert">${esc(state.authError)}</div>` : ''}
-      ${firebaseConfigured ? `<form data-form="auth" class="stack-form"><label class="field-label">${t(state.language, 'email')}<input name="email" type="email" autocomplete="email" required value=""></label><label class="field-label">${t(state.language, 'password')}<input name="password" type="password" autocomplete="${state.authMode === 'signin' ? 'current-password' : 'new-password'}" minlength="8" required></label><button class="button button-primary full-width" type="submit" ${state.authBusy ? 'disabled' : ''}>${state.authBusy ? '…' : modeLabel}</button></form><button class="text-button" data-action="toggle-auth-mode">${state.authMode === 'signin' ? (fr ? 'Créer un compte' : 'Create an account') : (fr ? 'Déjà un compte? Connexion' : 'Already registered? Sign in')}</button>` : `<div class="inline-warning"><strong>${t(state.language, 'localOnly')}</strong><span>${t(state.language, 'localPreviewText')}</span></div>`}
-      <button class="button button-secondary full-width local-entry" data-action="preview">${t(state.language, 'continueLocal')}</button>
-    </div></section></main>`;
+    const configMessage = fr
+        ? 'L’authentification n’est pas encore configurée. Ajoutez les paramètres de l’application Web Firebase pour activer la connexion.'
+        : 'Authentication is not configured yet. Add the Firebase web app settings to enable sign-in.';
+    return `<main class="auth-layout auth-clean" id="main-content" tabindex="-1">
+      <section class="auth-form-side"><div class="auth-form-wrap">
+        <a class="auth-wordmark" href="/">mataba</a>
+        <h1>${t(state.language, 'signInTitle')}</h1><p class="muted">${t(state.language, 'signInText')}</p>
+        <div class="auth-language"><button class="language-button" data-action="toggle-language">${state.language.toUpperCase()}</button></div>
+        ${state.authError ? `<div class="notice notice-error" role="alert">${esc(state.authError)}</div>` : ''}
+        ${firebaseConfigured ? `<form data-form="auth" class="stack-form"><label class="field-label">${t(state.language, 'email')}<input name="email" type="email" autocomplete="email" required></label><label class="field-label">${t(state.language, 'password')}<input name="password" type="password" autocomplete="${state.authMode === 'signin' ? 'current-password' : 'new-password'}" minlength="8" required></label><button class="button button-primary full-width" type="submit" ${state.authBusy ? 'disabled' : ''}>${state.authBusy ? '…' : modeLabel}</button></form><button class="text-button" data-action="toggle-auth-mode">${state.authMode === 'signin' ? (fr ? 'Créer un compte' : 'Create an account') : (fr ? 'Déjà un compte? Connexion' : 'Already registered? Sign in')}</button>` : `<p class="auth-config-message" role="status">${configMessage}</p>`}
+        <a class="auth-back-link" href="/">${fr ? 'Retour à Mataba' : 'Back to Mataba'}</a>
+      </div></section></main>`;
 }
 function navItem(id, label, shortIcon) {
     return `<button type="button" class="nav-item ${state.section === id && !state.activeReviewId ? 'active' : ''}" aria-current="${state.section === id && !state.activeReviewId ? 'page' : 'false'}" data-action="navigate" data-section="${id}"><span class="nav-symbol" aria-hidden="true">${shortIcon}</span><span>${t(state.language, label)}</span>${id === 'new' ? '<span class="nav-plus">+</span>' : ''}</button>`;
@@ -135,18 +134,19 @@ function layoutView() {
     const user = state.user;
     const isReview = Boolean(state.activeReviewId && state.section === 'recent');
     const title = isReview ? activeReview()?.title || t(state.language, 'review') : t(state.language, state.section === 'recent' ? 'recent' : state.section === 'library' ? 'library' : state.section === 'new' ? 'newReview' : state.section === 'references' ? 'references' : state.section === 'legalQa' ? 'legalQa' : 'settings');
-    return `<div class="app-shell">
-    <aside class="sidebar ${state.mobileNavOpen ? 'sidebar-open' : ''}" id="primary-sidebar" role="${state.mobileNavOpen ? 'dialog' : 'complementary'}" ${state.mobileNavOpen ? 'aria-modal="true"' : ''} aria-label="${state.language === 'fr' ? 'Navigation principale' : 'Primary navigation'}"><div class="brand-row"><span class="brand-mark">m</span><div><div class="brand-name">Mataba</div><div class="brand-subtitle">${state.language === 'fr' ? 'Examen de contrats' : 'Contract review'}</div></div><button type="button" class="icon-button sidebar-close" data-action="close-nav" aria-label="${t(state.language, 'close')}">×</button></div>
-      <div class="nav-label">${t(state.language, 'overview')}</div><nav class="side-nav" aria-label="${state.language === 'fr' ? 'Navigation principale' : 'Main navigation'}">${navItem('recent', 'recent', '◷')}${navItem('library', 'library', '▤')}${navItem('new', 'newReview', '＋')}${navItem('references', 'references', '▧')}${navItem('legalQa', 'legalQa', '?')}</nav>
-      <div class="sidebar-spacer"></div><div class="sidebar-rule"></div><nav class="sidebar-settings" aria-label="${state.language === 'fr' ? 'Paramètres' : 'Settings'}"><button type="button" class="nav-item ${state.section === 'settings' ? 'active' : ''}" aria-current="${state.section === 'settings' ? 'page' : 'false'}" data-action="navigate" data-section="settings"><span class="nav-symbol" aria-hidden="true">⚙</span><span>${t(state.language, 'settings')}</span></button></nav>
-      <div class="sidebar-user"><div class="avatar">${user.uid === 'preview' ? 'P' : esc((user.email[0] || 'M').toUpperCase())}</div><div class="sidebar-user-meta"><strong>${esc(user.displayName || user.email)}</strong><span>${user.uid === 'preview' ? t(state.language, 'previewMode') : esc(user.email)}</span></div><button class="icon-button sidebar-logout" data-action="sign-out" aria-label="${t(state.language, 'signOut')}" title="${t(state.language, 'signOut')}">↪</button></div>
-    </aside>
-    ${state.mobileNavOpen ? `<div class="mobile-scrim" data-action="close-nav" aria-hidden="true"></div>` : ''}
-    <main class="main-area" id="main-content" tabindex="-1"><header class="topbar"><button type="button" class="icon-button mobile-menu" data-action="open-nav" aria-label="${state.language === 'fr' ? 'Ouvrir la navigation' : 'Open navigation'}" aria-expanded="${state.mobileNavOpen}" aria-controls="primary-sidebar">☰</button><div class="breadcrumb"><span>Mataba</span><span class="breadcrumb-sep">/</span><strong>${esc(title)}</strong></div><div class="topbar-actions">${state.section === 'library' ? `<label class="top-search"><span>⌕</span><input data-field="search" value="${esc(state.search)}" placeholder="${t(state.language, 'search')}" aria-label="${t(state.language, 'search')}"></label>` : ''}<button type="button" class="language-button" data-action="toggle-language" aria-label="${state.language === 'fr' ? 'Changer de langue' : 'Change language'}">${state.language.toUpperCase()} <span>⌄</span></button><button type="button" class="top-avatar" data-action="navigate" data-section="settings" aria-label="${t(state.language, 'settings')}">${user.uid === 'preview' ? 'P' : esc((user.email[0] || 'M').toUpperCase())}</button></div></header>
-    ${user.uid === 'preview' ? `<div class="preview-banner"><strong>${t(state.language, 'localOnly')}.</strong> ${t(state.language, 'localPreviewText')}</div>` : ''}
-    ${state.notice ? `<div class="notice notice-${state.notice.kind}" role="status" aria-live="polite" aria-atomic="true"><span>${esc(state.notice.text)}</span><button data-action="dismiss-notice" aria-label="${t(state.language, 'close')}">×</button></div>` : ''}
-    <div class="page-content">${pageView()}</div><footer class="app-footer"><span>Mataba</span><span>${t(state.language, 'privacyDisclaimer')}</span></footer></main>
-  </div>`;
+    return `<div class="app-shell app-shell-horizontal">
+      <header class="site-header"><div class="site-header-inner">
+        <a class="site-brand" href="/app">mataba</a>
+        <nav class="primary-nav app-primary-nav" aria-label="${state.language === 'fr' ? 'Navigation principale' : 'Main navigation'}">
+          ${navItem('recent', 'recent', '')}${navItem('library', 'library', '')}${navItem('new', 'newReview', '')}${navItem('references', 'references', '')}${navItem('legalQa', 'legalQa', '')}
+        </nav>
+        <div class="header-controls"><button type="button" class="header-control" data-action="toggle-language">${state.language.toUpperCase()}</button><button type="button" class="header-control" data-action="navigate" data-section="settings">Aa</button><button type="button" class="header-control" data-action="toggle-theme">${state.theme === 'dark' ? (state.language === 'fr' ? 'Mode clair' : 'Light mode') : (state.language === 'fr' ? 'Mode sombre' : 'Dark mode')}</button><button type="button" class="header-control" data-action="sign-out">${t(state.language, 'signOut')}</button></div>
+      </div></header>
+      <main class="main-area" id="main-content" tabindex="-1">
+        ${state.notice ? `<div class="notice notice-${state.notice.kind}" role="status" aria-live="polite" aria-atomic="true"><span>${esc(state.notice.text)}</span><button data-action="dismiss-notice" aria-label="${t(state.language, 'close')}">×</button></div>` : ''}
+        <div class="page-content"><div class="app-page-title"><h1>${esc(title)}</h1>${state.section === 'library' ? `<label class="top-search"><input data-field="search" value="${esc(state.search)}" placeholder="${t(state.language, 'search')}" aria-label="${t(state.language, 'search')}"></label>` : ''}</div>${pageView()}</div>
+      </main>
+    </div>`;
 }
 function pageView() {
     if (state.section === 'recent' && state.activeReviewId)
@@ -165,7 +165,7 @@ function pageView() {
 }
 function recentView() {
     const employment = state.reviews.filter((r) => supportsHrReport(r.contractType)).length;
-    return `<section class="page-heading"><div><div class="eyebrow">${state.language === 'fr' ? 'VOTRE COMPTE' : 'YOUR ACCOUNT'}</div><h1>${state.language === 'fr' ? 'Bonjour' : 'Welcome back'}</h1><p>${t(state.language, 'recentIntro')}</p></div><button class="button button-primary" data-action="start-review">＋ ${t(state.language, 'startReview')}</button></section>
+    return `<section class="page-heading"><div><h1>${state.language === 'fr' ? 'Bonjour' : 'Welcome back'}</h1><p>${t(state.language, 'recentIntro')}</p></div><button class="button button-primary" data-action="start-review">＋ ${t(state.language, 'startReview')}</button></section>
     <section class="stat-grid"><div class="stat-item"><span>${t(state.language, 'totalReviews')}</span><strong>${state.reviews.length}</strong></div><div class="stat-item"><span>${t(state.language, 'employmentReviews')}</span><strong>${employment}</strong></div><div class="stat-item"><span>${t(state.language, 'referencesCount')}</span><strong>${state.references.length}</strong></div></section>
     <section class="section-heading"><div><h2>${t(state.language, 'recent')}</h2><p>${t(state.language, 'recentIntro')}</p></div><button class="text-button" data-action="navigate" data-section="library">${t(state.language, 'viewAll')} →</button></section>
     ${state.reviews.length ? `<div class="review-list">${state.reviews.slice(0, 5).map(reviewRow).join('')}</div>` : `<div class="empty-state"><div class="empty-symbol">▤</div><h3>${t(state.language, 'noReviews')}</h3><p>${t(state.language, 'noReviewsText')}</p><button class="button button-primary" data-action="start-review">${t(state.language, 'startReview')}</button></div>`}`;
@@ -177,7 +177,7 @@ function libraryView() {
     const q = state.search.trim().toLocaleLowerCase();
     const list = state.reviews.filter((review) => !q || review.title.toLocaleLowerCase().includes(q) || review.contractType.toLocaleLowerCase().includes(q));
     const folders = state.folders.filter((folder) => folder.kind !== 'references');
-    return `<section class="page-heading"><div><div class="eyebrow">${state.language === 'fr' ? 'CONTRATS ENREGISTRÉS' : 'SAVED CONTRACTS'}</div><h1>${t(state.language, 'library')}</h1><p>${t(state.language, 'libraryIntro')}</p></div><button class="button button-primary" data-action="start-review">＋ ${t(state.language, 'newReview')}</button></section>
+    return `<section class="page-heading"><div><h1>${t(state.language, 'library')}</h1><p>${t(state.language, 'libraryIntro')}</p></div><button class="button button-primary" data-action="start-review">＋ ${t(state.language, 'newReview')}</button></section>
     <div class="toolbar"><span class="muted">${list.length} ${state.language === 'fr' ? 'documents' : 'documents'}</span><button class="button button-secondary button-small" data-action="show-folder" data-kind="contracts">＋ ${t(state.language, 'createFolder')}</button></div>
     ${state.showFolderForm && state.folderKind !== 'references' ? folderForm() : ''}
     ${folders.length ? `<div class="folder-strip">${folders.map((folder) => `<span class="folder-chip">▱ ${esc(folder.name)}</span>`).join('')}</div>` : ''}
@@ -190,7 +190,7 @@ function newReviewView() {
     const d = state.draft;
     const blockReason = getBackendBlockReason();
     const references = state.references;
-    return `<section class="page-heading"><div><div class="eyebrow">${state.language === 'fr' ? 'NOUVEL EXAMEN' : 'NEW CONTRACT REVIEW'}</div><h1>${t(state.language, 'newReview')}</h1><p>${state.language === 'fr' ? 'Téléversez un contrat ou collez son texte, vérifiez les renseignements expurgés et examinez les conditions.' : 'Upload a contract or paste its text, review masked personal information and examine the terms.'}</p></div></section>
+    return `<section class="page-heading"><div><h1>${t(state.language, 'newReview')}</h1><p>${state.language === 'fr' ? 'Téléversez un contrat ou collez son texte, vérifiez les renseignements expurgés et examinez les conditions.' : 'Upload a contract or paste its text, review masked personal information and examine the terms.'}</p></div></section>
   <div class="review-form-layout"><div class="form-main">
     <section class="panel"><div class="panel-step"><span>01</span><div><h2>${t(state.language, 'uploadContract')}</h2><p>${t(state.language, 'uploadHint')}</p></div></div>
       <div class="contract-input-tabs" role="group" aria-label="${state.language === 'fr' ? 'Mode de saisie du contrat' : 'Contract input method'}"><button type="button" class="${d.inputMode === 'file' ? 'active' : ''}" data-action="contract-input-mode" data-value="file" aria-pressed="${d.inputMode === 'file'}">${state.language === 'fr' ? 'Téléverser un document' : 'Upload document'}</button><button type="button" class="${d.inputMode === 'text' ? 'active' : ''}" data-action="contract-input-mode" data-value="text" aria-pressed="${d.inputMode === 'text'}">${state.language === 'fr' ? 'Coller le texte' : 'Paste text'}</button></div>
@@ -218,7 +218,7 @@ function newReviewView() {
 }
 function referencesView() {
     const d = state.referenceDraft;
-    return `<section class="page-heading"><div><div class="eyebrow">${state.language === 'fr' ? 'MATÉRIAUX DE COMPARAISON' : 'COMPARISON SOURCES'}</div><h1>${t(state.language, 'references')}</h1><p>${t(state.language, 'referenceIntro')}</p></div><button class="button button-secondary" data-action="show-folder" data-kind="references">＋ ${t(state.language, 'createFolder')}</button></section>
+    return `<section class="page-heading"><div><h1>${t(state.language, 'references')}</h1><p>${t(state.language, 'referenceIntro')}</p></div><button class="button button-secondary" data-action="show-folder" data-kind="references">＋ ${t(state.language, 'createFolder')}</button></section>
     ${state.showFolderForm && state.folderKind === 'references' ? folderForm() : ''}
     <section class="panel reference-upload-panel"><h2>${t(state.language, 'addReference')}</h2><form data-form="reference"><div class="field-grid"><label class="field-label">${t(state.language, 'title')}<input name="referenceTitle" maxlength="100" required value="${esc(d.title)}"></label><label class="field-label">${t(state.language, 'folder')}<select name="referenceFolder" data-field="reference-folder"><option value="">${t(state.language, 'uncategorized')}</option>${state.folders.filter(f => f.kind !== 'contracts').map(f => `<option value="${esc(f.id)}" ${d.folderId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label></div><label class="upload-zone compact-upload ${d.file ? 'has-file' : ''}" for="reference-file"><input id="reference-file" type="file" data-file-kind="reference" accept=".pdf,.docx,.txt"><strong>${d.file ? esc(d.file.name) : t(state.language, 'selectFile')}</strong><span>${t(state.language, 'uploadHint')}</span></label><div class="privacy-actions"><button class="button button-secondary" type="button" data-action="scan-reference" ${!d.parsed || d.busy ? 'disabled' : ''}>${t(state.language, 'runPrivacyScan')}</button>${d.redaction ? `<span class="scan-source">${d.redaction.method === 'GEMINI_NANO' ? 'Gemini Nano · On device' : 'Pattern scan · Manual review required'}</span>` : ''}</div>${d.progress ? `<div class="progress-line">${esc(d.progress)}</div>` : ''}${d.error ? `<div class="inline-error" role="alert">${esc(d.error)}</div>` : ''}${d.redaction ? `<div class="text-preview sanitized"><div class="preview-title">${t(state.language, 'sanitizedText')}</div><pre>${esc(d.redaction.pages.map(p => p.text).join('\n\n').slice(0, 3500))}</pre></div><div class="manual-redaction-row"><label class="sr-only" for="manual-reference-value">${t(state.language, 'addManualRedaction')}</label><input id="manual-reference-value" aria-label="${t(state.language, 'addManualRedaction')}" placeholder="${t(state.language, 'addManualRedaction')}"><button class="button button-tertiary button-small" type="button" data-action="add-manual-reference">${t(state.language, 'add')}</button></div><label class="confirm-row"><input type="checkbox" data-field="reference-manual-confirm" ${d.manualConfirmed ? 'checked' : ''}><span>${t(state.language, 'manualCheck')}</span></label>` : ''}<button class="button button-primary" type="submit" ${!d.redaction || !d.manualConfirmed || d.busy ? 'disabled' : ''}>${t(state.language, 'saveReference')}</button></form></section>
     <section class="section-heading"><div><h2>${state.language === 'fr' ? 'Documents enregistrés' : 'Saved reference materials'}</h2></div><span class="muted">${state.references.length}</span></section>
@@ -226,9 +226,9 @@ function referencesView() {
 }
 function settingsView() {
     const blocked = getBackendBlockReason();
-    return `<section class="page-heading"><div><div class="eyebrow">MATABA</div><h1>${t(state.language, 'settings')}</h1><p>${state.language === 'fr' ? 'Préférences d’affichage, langue et paramètres du compte.' : 'Display preferences, language and account settings.'}</p></div></section>
+    return `<section class="page-heading"><div><h1>${t(state.language, 'settings')}</h1><p>${state.language === 'fr' ? 'Préférences d’affichage, langue et paramètres du compte.' : 'Display preferences, language and account settings.'}</p></div></section>
     <section class="settings-section"><div class="settings-copy"><h2>${t(state.language, 'appearance')}</h2><p>${state.language === 'fr' ? 'Choisissez le thème et la taille du texte.' : 'Choose your display theme and text size.'}</p></div><div class="settings-controls"><div class="setting-row"><span>${t(state.language, 'appearance')}</span><div class="segmented-control" role="group" aria-label="${t(state.language, 'appearance')}"><button type="button" aria-pressed="${state.theme === 'light'}" data-action="set-theme" data-value="light" class="${state.theme === 'light' ? 'selected' : ''}">${t(state.language, 'light')}</button><button type="button" aria-pressed="${state.theme === 'dark'}" data-action="set-theme" data-value="dark" class="${state.theme === 'dark' ? 'selected' : ''}">${t(state.language, 'dark')}</button></div></div><div class="setting-row"><span>${t(state.language, 'fontSize')}</span><div class="segmented-control" role="group" aria-label="${t(state.language, 'fontSize')}"><button type="button" aria-pressed="${state.fontSize === 'small'}" data-action="set-font" data-value="small" class="${state.fontSize === 'small' ? 'selected' : ''}">${t(state.language, 'small')}</button><button type="button" aria-pressed="${state.fontSize === 'medium'}" data-action="set-font" data-value="medium" class="${state.fontSize === 'medium' ? 'selected' : ''}">${t(state.language, 'medium')}</button><button type="button" aria-pressed="${state.fontSize === 'large'}" data-action="set-font" data-value="large" class="${state.fontSize === 'large' ? 'selected' : ''}">${t(state.language, 'large')}</button></div></div><div class="setting-row"><span>${state.language === 'fr' ? 'Langue' : 'Language'}</span><div class="segmented-control" role="group" aria-label="${state.language === 'fr' ? 'Langue' : 'Language'}"><button type="button" aria-pressed="${state.language === 'en'}" data-action="set-language" data-value="en" class="${state.language === 'en' ? 'selected' : ''}">English</button><button type="button" aria-pressed="${state.language === 'fr'}" data-action="set-language" data-value="fr" class="${state.language === 'fr' ? 'selected' : ''}">Français</button></div></div></div></section>
-    <section class="settings-section"><div class="settings-copy"><h2>${t(state.language, 'account')}</h2><p>${t(state.language, 'signedInAs')} ${esc(state.user?.email || '')}</p></div><div class="settings-controls"><button class="button button-secondary" data-action="sign-out">${t(state.language, 'signOut')}</button>${state.user?.uid !== 'preview' ? `<div class="delete-account-area"><p>${t(state.language, 'deleteWarning')}</p><label class="field-label">${t(state.language, 'confirmDelete')}<input id="delete-confirmation" autocomplete="off" required></label><label class="field-label">${t(state.language, 'verifyPassword')}<input id="delete-account-password" type="password" autocomplete="current-password" required></label><button type="button" class="button button-danger" data-action="delete-account">${t(state.language, 'deleteAccount')}</button></div>` : ''}</div></section>
+    <section class="settings-section"><div class="settings-copy"><h2>${t(state.language, 'account')}</h2><p>${t(state.language, 'signedInAs')} ${esc(state.user?.email || '')}</p></div><div class="settings-controls"><button class="button button-secondary" data-action="sign-out">${t(state.language, 'signOut')}</button>${`<div class="delete-account-area"><p>${t(state.language, 'deleteWarning')}</p><label class="field-label">${t(state.language, 'confirmDelete')}<input id="delete-confirmation" autocomplete="off" required></label><label class="field-label">${t(state.language, 'verifyPassword')}<input id="delete-account-password" type="password" autocomplete="current-password" required></label><button type="button" class="button button-danger" data-action="delete-account">${t(state.language, 'deleteAccount')}</button></div>`}</div></section>
     <section class="settings-section"><div class="settings-copy"><h2>${state.language === 'fr' ? 'Traitement et résidence des données' : 'AI processing and data residency'}</h2><p>${state.language === 'fr' ? 'L’état de configuration de l’IA et de la protection de l’application.' : 'AI and application-protection configuration status.'}</p></div><div class="settings-controls"><div class="config-status"><span class="status-dot ${firebaseConfigured ? 'green' : 'amber'}"></span><div><strong>Firebase ${firebaseConfigured ? 'configured' : 'not configured'}</strong><small>${firebaseConfigured ? 'Authentication, Firestore and Storage SDK initialized' : 'Add web app settings in app/static/config.js'}</small></div></div><div class="config-status"><span class="status-dot ${appCheckConfigured ? 'green' : 'amber'}"></span><div><strong>App Check ${appCheckConfigured ? 'configured' : 'required'}</strong><small>${appCheckConfigured ? 'reCAPTCHA Enterprise provider initialized' : 'Set recaptchaEnterpriseSiteKey and enforce in Firebase Console'}</small></div></div><div class="config-status"><span class="status-dot amber"></span><div><strong>Python API ${backendApiBaseUrl ? 'configured' : 'not configured'}</strong><small>${esc(blocked || `API endpoint: ${backendApiBaseUrl}`)}</small></div></div></div></section>`;
 }
 function reportCitation(citation, tokenMap) {
@@ -247,7 +247,7 @@ function reviewDetailView() {
     const tab = state.reportTab;
     const reportText = a ? (tab === 'hr' ? a.hrReport || '' : a.lawyerReport) : '';
     return `<div class="detail-heading"><button class="text-button" data-action="back-to-reviews">← ${t(state.language, 'recent')}</button><div class="detail-actions"><span class="status-pill status-${review.status}">${statusLabel(review.status)}</span><button class="button button-secondary button-small" data-action="delete-review" data-id="${esc(review.id)}">${t(state.language, 'delete')}</button></div></div>
-    <section class="detail-title"><div class="eyebrow">${contractLabel(review.contractType)}</div><h1>${esc(review.title)}</h1><p>${dateLabel(review.updatedAt)} · ${review.pages.length} ${state.language === 'fr' ? 'extraits de source' : 'source excerpts'}</p></section>
+    <section class="detail-title"><h1>${esc(review.title)}</h1><p>${dateLabel(review.updatedAt)} · ${review.pages.length} ${state.language === 'fr' ? 'extraits de source' : 'source excerpts'}</p></section>
     ${a ? `<section class="report-summary"><div><h2>${t(state.language, 'summary')}</h2><p>${nl2br(rehydrateText(a.executiveSummary, tokenMap))}</p><div class="evidence-list">${(a.executiveSummaryCitations || []).map(c => reportCitation(c, tokenMap)).join('')}</div></div></section><div class="report-tabs" role="tablist" aria-label="${t(state.language, 'report')}"><button type="button" role="tab" id="report-tab-lawyer" aria-controls="report-panel" aria-selected="${tab === 'lawyer'}" tabindex="${tab === 'lawyer' ? 0 : -1}" class="${tab === 'lawyer' ? 'active' : ''}" data-action="report-tab" data-value="lawyer">${t(state.language, 'lawyerReport')}</button>${supportsHrReport(review.contractType) && a.hrReport ? `<button type="button" role="tab" id="report-tab-hr" aria-controls="report-panel" aria-selected="${tab === 'hr'}" tabindex="${tab === 'hr' ? 0 : -1}" class="${tab === 'hr' ? 'active' : ''}" data-action="report-tab" data-value="hr">${t(state.language, 'hrReport')}</button>` : ''}</div>
       <section class="report-content" id="report-panel" role="tabpanel" tabindex="0" aria-labelledby="report-tab-${tab}"><h2>${tab === 'hr' ? t(state.language, 'hrReport') : t(state.language, 'lawyerReport')}</h2><div class="report-prose">${nl2br(rehydrateText(reportText || a.executiveSummary, tokenMap))}</div>${tab === 'lawyer' ? `<div class="evidence-list">${(a.lawyerReportCitations || []).map(c => reportCitation(c, tokenMap)).join('')}</div>` : (a.hrSections || []).map(section => `<article class="hr-topic"><div class="finding-meta">${esc(hrTopicLabels[state.language][section.topic] || section.topic)} · ${esc(hrStatusLabels[state.language][section.status] || section.status)}</div><p>${nl2br(rehydrateText(section.analysis, tokenMap))}</p>${section.practicalConsiderations ? `<p>${nl2br(rehydrateText(section.practicalConsiderations, tokenMap))}</p>` : ''}<div class="evidence-list">${(section.citations || []).map(c => reportCitation(c, tokenMap)).join('')}</div></article>`).join('')}</section>
       <section class="section-heading"><div><h2>${t(state.language, 'findings')}</h2><p>${state.language === 'fr' ? 'Constats liés aux extraits vérifiés des documents.' : 'Findings linked to verified document excerpts.'}</p></div></section>
@@ -285,7 +285,7 @@ function legalQaView() {
         ? `<label class="field-label" for="legal-municipality">${t(state.language, 'legalQaMunicipality')}<input id="legal-municipality" name="municipalityName" data-field="legalMunicipalityName" aria-describedby="legal-qa-municipal-note" type="text" maxlength="120" required value="${esc(state.legalMunicipalityName)}" placeholder="${t(state.language, 'legalQaMunicipalityPlaceholder')}"></label><p id="legal-qa-municipal-note" class="legal-qa-location-note">${t(state.language, 'legalQaMunicipalNote')}</p>`
         : '';
     const resultContext = result ? `<p class="legal-qa-source-context">${result.municipalityName ? `${t(state.language, 'legalQaMunicipality')}: ${esc(result.municipalityName)} · ` : ''}${t(state.language, 'legalQaSourceLevel')}: ${t(state.language, `legalQaLevel_${result.sourceLevel}`)}</p>` : '';
-    return `<section class="page-heading"><div><div class="eyebrow">${state.language === 'fr' ? 'DROIT DU TRAVAIL AU CANADA' : 'CANADIAN EMPLOYMENT & LABOUR LAW'}</div><h1>${t(state.language, 'legalQa')}</h1><p>${t(state.language, 'legalQaIntro')}</p></div></section>
+    return `<section class="page-heading"><div><h1>${t(state.language, 'legalQa')}</h1><p>${t(state.language, 'legalQaIntro')}</p></div></section>
     <section class="legal-qa-layout" aria-labelledby="legal-qa-form-title">
       <div class="legal-qa-form-panel">
         <h2 id="legal-qa-form-title">${state.language === 'fr' ? 'Que souhaitez-vous savoir?' : 'What would you like to know?'}</h2>
@@ -306,22 +306,7 @@ function render() {
     setPreferences();
     app.innerHTML = !state.authReady ? `<div class="boot-screen"><span class="brand-mark">m</span><span>Mataba</span></div>` : !state.user ? authView() : layoutView();
     app.querySelectorAll('button:not([type])').forEach((button) => { button.type = 'button'; });
-    const sidebar = app.querySelector('#primary-sidebar');
-    if (sidebar) {
-        const isMobile = window.matchMedia('(max-width: 850px)').matches;
-        const closed = isMobile && !state.mobileNavOpen;
-        sidebar.inert = closed;
-        sidebar.setAttribute('aria-hidden', String(closed));
-    }
-    const menuButton = app.querySelector('.mobile-menu');
-    menuButton?.setAttribute('aria-expanded', String(state.mobileNavOpen));
-    const main = app.querySelector('.main-area');
-    const modalNavigation = Boolean(main && state.mobileNavOpen && window.matchMedia('(max-width: 850px)').matches);
-    if (main) {
-        main.inert = modalNavigation;
-        main.setAttribute('aria-hidden', String(modalNavigation));
-    }
-    document.body.style.overflow = modalNavigation ? 'hidden' : '';
+    document.body.style.overflow = '';
 }
 function focusMainHeading() {
     const heading = app.querySelector('#main-content h1');
@@ -520,9 +505,7 @@ async function handleClick(button) {
     const action = button.dataset.action;
     if (!action)
         return;
-    if (action === 'preview')
-        enterPreview();
-    else if (action === 'toggle-language' || action === 'set-language') {
+    if (action === 'toggle-language' || action === 'set-language') {
         state.language = action === 'set-language' ? button.dataset.value : state.language === 'fr' ? 'en' : 'fr';
         state.draft.language = state.language;
         render();
@@ -538,7 +521,7 @@ async function handleClick(button) {
         if (nextSection === 'legalQa' && window.location.pathname !== '/qa')
             history.pushState({ section: 'legalQa' }, '', '/qa');
         else if (nextSection !== 'legalQa' && window.location.pathname === '/qa')
-            history.pushState({ section: nextSection }, '', '/');
+            history.pushState({ section: nextSection }, '', '/app');
         state.section = nextSection;
         state.activeReviewId = null;
         state.mobileNavOpen = false;
@@ -891,6 +874,7 @@ if (auth) {
         const priorId = state.user?.uid;
         if (user) {
             state.user = { uid: user.uid, email: user.email || '', displayName: user.displayName || user.email || 'Mataba user' };
+            if (window.location.pathname === '/signin') history.replaceState({}, '', '/app');
             if (priorId && priorId !== user.uid)
                 state.tokenMaps = {};
             void loadUserData().catch((error) => notice('error', error instanceof Error ? error.message : 'Unable to load saved data.'));
@@ -907,42 +891,7 @@ if (auth) {
         render();
     });
 }
-function visibleFocusables(container) {
-    return [...container.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true' && element.getClientRects().length > 0);
-}
 document.addEventListener('keydown', (event) => {
-    if (state.mobileNavOpen) {
-        const sidebar = app.querySelector('#primary-sidebar');
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            state.mobileNavOpen = false;
-            render();
-            app.querySelector('.mobile-menu')?.focus();
-            return;
-        }
-        if (event.key === 'Tab' && sidebar) {
-            const focusables = visibleFocusables(sidebar);
-            if (!focusables.length) {
-                event.preventDefault();
-                sidebar.focus();
-                return;
-            }
-            const first = focusables[0];
-            const last = focusables[focusables.length - 1];
-            if (!sidebar.contains(document.activeElement)) {
-                event.preventDefault();
-                (event.shiftKey ? last : first).focus();
-            }
-            else if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault();
-                last.focus();
-            }
-            else if (!event.shiftKey && document.activeElement === last) {
-                event.preventDefault();
-                first.focus();
-            }
-        }
-    }
     const tab = event.target?.closest('[role="tab"][data-action="report-tab"]');
     if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
         const tabs = [...(tab.closest('[role="tablist"]')?.querySelectorAll('[role="tab"]') || [])];
@@ -952,16 +901,6 @@ document.addEventListener('keydown', (event) => {
             const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
             tabs[next].click();
         }
-    }
-});
-let previousMobileBreakpoint = window.matchMedia('(max-width: 850px)').matches;
-window.addEventListener('resize', () => {
-    const currentMobileBreakpoint = window.matchMedia('(max-width: 850px)').matches;
-    if (currentMobileBreakpoint !== previousMobileBreakpoint) {
-        previousMobileBreakpoint = currentMobileBreakpoint;
-        if (!currentMobileBreakpoint)
-            state.mobileNavOpen = false;
-        render();
     }
 });
 window.addEventListener('popstate', () => { state.section = window.location.pathname === '/qa' ? 'legalQa' : 'recent'; state.activeReviewId = null; state.mobileNavOpen = false; render(); focusMainHeading(); });

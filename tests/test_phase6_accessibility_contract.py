@@ -32,14 +32,12 @@ def test_skip_link_points_to_main_landmark():
     assert 'id="main-content" tabindex="-1"' in MAIN
 
 
-def test_navigation_drawer_is_modal_and_keyboard_managed_on_mobile():
-    assert 'role="${state.mobileNavOpen ? \'dialog\' : \'complementary\'}"' in MAIN
-    assert 'aria-modal="true"' in MAIN
-    assert "sidebar.inert = closed" in MAIN
-    assert "main.inert = modalNavigation" in MAIN
-    assert "if (event.key === 'Tab' && sidebar)" in MAIN
-    assert "if (event.key === 'Escape')" in MAIN
-    assert "window.matchMedia('(max-width: 850px)')" in MAIN
+def test_application_uses_horizontal_navigation_and_no_sidebar_drawer():
+    assert 'class="primary-nav app-primary-nav"' in MAIN
+    assert "function layoutView()" in MAIN
+    assert "app-shell-horizontal" in MAIN
+    assert "primary-sidebar" not in MAIN
+    assert "role=\"dialog\"" not in MAIN
 
 
 def test_report_tabs_have_required_roles_and_keyboard_navigation():

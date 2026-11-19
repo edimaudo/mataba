@@ -1,4 +1,4 @@
-# Phase 5–6 validation — Mataba 2.9.3
+# Phase 5–6 validation — Mataba 2.9.4
 
 ## Security and UX implementation retained
 

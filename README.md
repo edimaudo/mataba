@@ -1,4 +1,4 @@
-# Mataba 2.9.3
+# Mataba 2.9.4
 
 Mataba is a Canadian contract-review application. It is one **Python + FastAPI** application. The browser interface is plain **HTML, CSS and native JavaScript** served by that same FastAPI application. Firebase AI Logic is the cloud Gemini integration.
 
@@ -17,7 +17,8 @@ mataba/
 │   ├── rate_limit.py
 │   ├── services/                   # Python application logic
 │   ├── templates/
-│   │   ├── index.html
+│   │   ├── landing.html             # Public landing page at /
+│   │   ├── index.html               # Sign-in and application shell
 │   │   └── 404.html
 │   └── static/
 │       ├── config.js               # Public Firebase web-app settings only
@@ -35,7 +36,7 @@ mataba/
 └── vercel.json
 ```
 
-FastAPI serves `/`, `/qa`, the static files and all `/api/*` endpoints. The browser JavaScript is already in executable `.js` files; no frontend compilation or generated `public/` directory is required.
+FastAPI serves the public landing page at `/`, sign-in at `/signin`, the authenticated application at `/app` (and standalone Legal Q&A at `/qa`), static files and all `/api/*` endpoints. The browser JavaScript is already in executable `.js` files; no frontend compilation or generated `public/` directory is required.
 
 The browser loads the pinned Firebase, PDF.js, Mammoth, Dexie and fflate libraries directly from their CDN URLs in the HTML import map/script tags. These are browser libraries, not a Node application or a separate frontend server. The only Python runtime dependency installation is from `requirements.txt`.
 
@@ -106,7 +107,7 @@ Run the application:
 python scripts/dev.py
 ```
 
-Open `http://127.0.0.1:8080`. The development script starts one Uvicorn/FastAPI server. No browser build or separate frontend process is run.
+Open `http://127.0.0.1:8080` for the public landing page. Sign in at `/signin`; the application is served at `/app`. The development script starts one Uvicorn/FastAPI server. No browser build or separate frontend process is run.
 
 Alternatively, run FastAPI directly:
 
@@ -176,6 +177,7 @@ The browser tests load axe-core from its pinned CDN URL. They do not install or 
 - Phase 4: excluded, as requested.
 - Phase 5: Firebase ID token/App Check checks, request-size and rate limits, residual-PII guard, Firestore/Storage rules and account deletion sequence.
 - Phase 6: English/French UI, keyboard/focus behavior, responsive navigation, light/dark theme, font scaling and accessibility support.
+- Version 2.9.4: added the public KaziLaw-referenced landing page, separated `/signin` and `/app`, replaced the sidebar with compact horizontal navigation, removed eyebrow labels and removed the local-preview account path.
 
 ## Important limits before production
 

@@ -25,7 +25,7 @@ STATIC_DIR = APP_DIR / "static"
 
 app = FastAPI(
     title="Mataba",
-    version="2.9.3",
+    version="2.9.4",
     description=(
         "Python FastAPI application serving Mataba's pages, static JavaScript and API routes. "
         "Firebase AI Logic is the cloud inference integration."
@@ -256,10 +256,20 @@ async def answer_legal_question(
         raise HTTPException(status_code=422, detail="The legal question could not be answered.") from exc
 
 
-@app.get("/qa", include_in_schema=False)
 @app.get("/", include_in_schema=False)
+async def landing_page():
+    """Public Mataba landing page."""
+    page = TEMPLATES_DIR / "landing.html"
+    if not page.is_file():
+        raise HTTPException(status_code=503, detail="Mataba landing page is missing.")
+    return FileResponse(page, media_type="text/html; charset=utf-8")
+
+
+@app.get("/signin", include_in_schema=False)
+@app.get("/app", include_in_schema=False)
+@app.get("/qa", include_in_schema=False)
 async def application_page():
-    """Serve Mataba's HTML page directly from the FastAPI application package."""
+    """Serve the authenticated application shell from FastAPI."""
     index_file = TEMPLATES_DIR / "index.html"
     if not index_file.is_file():
         raise HTTPException(status_code=503, detail="Mataba application template is missing.")

@@ -17,16 +17,21 @@ def set_test_assets(monkeypatch, tmp_path):
 
 def test_fastapi_serves_html_and_native_javascript_directly(monkeypatch, tmp_path):
     static, templates = set_test_assets(monkeypatch, tmp_path)
-    (templates / "index.html").write_text("<!doctype html><html><title>Mataba</title></html>", encoding="utf-8")
+    (templates / "landing.html").write_text("<!doctype html><html><title>Mataba</title></html>", encoding="utf-8")
+    (templates / "index.html").write_text("<!doctype html><html><title>Mataba app</title></html>", encoding="utf-8")
     (static / "main.js").write_text("console.log('mataba');", encoding="utf-8")
 
     with TestClient(main.app) as client:
         root = client.get("/")
+        application = client.get("/app")
+        signin = client.get("/signin")
         asset = client.get("/main.js")
 
     assert root.status_code == 200
     assert "Mataba" in root.text
     assert root.headers["content-type"].startswith("text/html")
+    assert application.status_code == 200
+    assert signin.status_code == 200
     assert asset.status_code == 200
     assert "console.log" in asset.text
     assert "javascript" in asset.headers["content-type"]
@@ -118,13 +123,16 @@ def test_legal_qa_has_employment_only_law_type_and_municipal_jurisdiction_select
 def test_fastapi_serves_html_css_javascript_and_runtime_config_from_app_package():
     root = Path(__file__).resolve().parents[1]
     with TestClient(main.app) as client:
-        page = client.get("/")
+        page = client.get("/app")
+        landing = client.get("/")
         stylesheet = client.get("/css/styles.css")
         script = client.get("/js/main.js")
         config = client.get("/config.js")
 
     assert page.status_code == 200
     assert 'type="module" src="/js/main.js"' in page.text
+    assert landing.status_code == 200
+    assert 'href="/signin"' in landing.text
     assert stylesheet.status_code == 200
     assert stylesheet.headers["content-type"].startswith("text/css")
     assert script.status_code == 200
@@ -133,3 +141,22 @@ def test_fastapi_serves_html_css_javascript_and_runtime_config_from_app_package(
     assert config.status_code == 200
     assert "MATABA_CONFIG" in config.text
     assert (root / "app" / "static" / "js" / "main.js").is_file()
+
+
+def test_public_landing_page_is_separate_from_authenticated_application():
+    root = Path(__file__).resolve().parents[1]
+    with TestClient(main.app) as client:
+        landing = client.get("/")
+        signin = client.get("/signin")
+        application = client.get("/app")
+    assert "Understand your employment contract before you sign." in landing.text
+    assert 'href="/signin"' in landing.text
+    assert 'type="module" src="/js/main.js"' not in landing.text
+    assert 'type="module" src="/js/main.js"' in signin.text
+    assert 'type="module" src="/js/main.js"' in application.text
+    script = (root / "app" / "static" / "js" / "main.js").read_text(encoding="utf-8")
+    assert 'data-action="preview"' not in script
+    assert 'Local-only preview' not in script
+    assert 'localPreviewText' not in script
+    assert 'class="eyebrow"' not in script
+    assert 'class="eyebrow"' not in (root / "app" / "templates" / "landing.html").read_text(encoding="utf-8")
