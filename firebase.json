@@ -1,8 +1,0 @@
-{
-  "firestore": {
-    "rules": "backend/firebase/firestore.rules"
-  },
-  "storage": {
-    "rules": "backend/firebase/storage.rules"
-  }
-}
