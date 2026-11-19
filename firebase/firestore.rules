@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Mataba currently stores review, reference and folder records beneath
+    // each user's namespace. Root user documents are not client-readable.
+    match /users/{userId} {
+      allow delete: if isOwner(userId);
+      allow get, list, create, update: if false;
+
+      match /{collectionName}/{documentId} {
+        function isSupportedCollection() {
+          return collectionName in ['reviews', 'references', 'folders'];
+        }
+        allow get, list: if isOwner(userId) && isSupportedCollection();
+        allow create, update: if isOwner(userId)
+          && isSupportedCollection()
+          && request.resource.data.userId == userId;
+        allow delete: if isOwner(userId)
+          && isSupportedCollection()
+          && resource.data.userId == userId;
+      }
+    }
+  }
+}

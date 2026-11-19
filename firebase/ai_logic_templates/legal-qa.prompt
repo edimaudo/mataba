@@ -1,0 +1,17 @@
+---
+model: 'gemini-3.8-flash'
+input:
+  schema:
+    prompt: string, Prepared employment and labour law question with retrieved excerpts from the selected official Canadian legislation
+output:
+  format: json
+  schema:
+    answer: string
+    citations(array):
+      sourceId: string
+      excerpt: string
+config:
+  maxOutputTokens: 4096
+---
+{{role "user"}}
+{{prompt}}
