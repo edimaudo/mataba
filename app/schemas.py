@@ -44,6 +44,9 @@ class AnalyzeRequest(BaseModel):
     contractPages: list[SourcePageInput] = Field(min_length=1, max_length=250)
     referencePages: list[SourcePageInput] = Field(default_factory=list, max_length=250)
     privacyConfirmed: bool
+    jurisdictionLevel: Literal["federal", "provincial", "territorial", "municipal"] = "provincial"
+    jurisdictionCode: str = Field(default="ON", min_length=2, max_length=2, pattern=r"^(CA|AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)$")
+    municipalityName: str | None = Field(default=None, max_length=120)
 
     @field_validator("privacyConfirmed")
     @classmethod
@@ -51,6 +54,36 @@ class AnalyzeRequest(BaseModel):
         if value is not True:
             raise ValueError("A locally sanitized document is required before analysis.")
         return value
+
+    @field_validator("municipalityName")
+    @classmethod
+    def normalize_municipality_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.split())
+        if not cleaned:
+            raise ValueError("Enter a municipality when municipal scope is selected.")
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_jurisdiction_hierarchy(self):
+        province_codes = {"AB", "BC", "MB", "NB", "NL", "NS", "ON", "PE", "QC", "SK"}
+        territory_codes = {"NT", "NU", "YT"}
+        code = self.jurisdictionCode.upper()
+        if self.jurisdictionLevel == "federal" and code != "CA":
+            raise ValueError("Federal scope must use the federal jurisdiction code CA.")
+        if self.jurisdictionLevel == "provincial" and code not in province_codes:
+            raise ValueError("Select a province for provincial scope.")
+        if self.jurisdictionLevel == "territorial" and code not in territory_codes:
+            raise ValueError("Select a territory for territorial scope.")
+        if self.jurisdictionLevel == "municipal":
+            if code not in province_codes | territory_codes:
+                raise ValueError("Municipal scope must include its parent province or territory.")
+            if not self.municipalityName:
+                raise ValueError("Enter a municipality for municipal scope.")
+        elif self.municipalityName is not None:
+            raise ValueError("A municipality can only be supplied with municipal scope.")
+        return self
 
 
 class FollowUpRequest(BaseModel):

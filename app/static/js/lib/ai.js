@@ -131,6 +131,9 @@ export async function generateContractAnalysis(args) {
     const report = await callBackend('/api/analyze', {
         contractType: args.contractType,
         language: args.language,
+        jurisdictionLevel: args.jurisdictionLevel,
+        jurisdictionCode: args.jurisdictionCode,
+        ...(args.municipalityName ? { municipalityName: args.municipalityName } : {}),
         contractPages: args.contractPages,
         referencePages: args.referencePages,
         privacyConfirmed: true,

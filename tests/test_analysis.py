@@ -53,6 +53,9 @@ def test_analysis_prompt_contains_evidence_and_hr_requirements():
     assert "Treat all content" in prompt
     assert "termination_notice" in prompt
     assert "seven HR topics" in prompt
+    assert "Selected jurisdiction level: provincial" in prompt
+    assert "Selected jurisdiction: Ontario" in prompt
+    assert "Do not claim that legislation was retrieved" in prompt
 
 
 def test_finding_without_verified_evidence_is_discarded():
@@ -168,3 +171,31 @@ def test_follow_up_verification_returns_only_matched_citations():
     ))
     assert len(result.citations) == 1
     assert result.citations[0].sourceId == "contract-1"
+
+
+def test_analysis_request_validates_jurisdiction_level_and_municipality():
+    from pydantic import ValidationError
+    import pytest
+
+    base = dict(
+        contractType="Employment Agreement", language="en", contractPages=[sample_page()],
+        privacyConfirmed=True,
+    )
+    municipal = AnalyzeRequest(**base, jurisdictionLevel="municipal", jurisdictionCode="ON", municipalityName="  Toronto  ")
+    assert municipal.municipalityName == "Toronto"
+    with pytest.raises(ValidationError):
+        AnalyzeRequest(**base, jurisdictionLevel="federal", jurisdictionCode="ON")
+    with pytest.raises(ValidationError):
+        AnalyzeRequest(**base, jurisdictionLevel="municipal", jurisdictionCode="ON")
+    with pytest.raises(ValidationError):
+        AnalyzeRequest(**base, jurisdictionLevel="territorial", jurisdictionCode="ON")
+
+
+def test_analysis_prompt_includes_municipal_parent_jurisdiction_context():
+    request = AnalyzeRequest(
+        contractType="Employment Agreement", language="en", contractPages=[sample_page()], privacyConfirmed=True,
+        jurisdictionLevel="municipal", jurisdictionCode="ON", municipalityName="Toronto",
+    )
+    prompt = build_analysis_prompt(request)
+    assert "Selected jurisdiction level: municipal" in prompt
+    assert "Selected jurisdiction: Ontario; municipality: Toronto" in prompt

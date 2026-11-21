@@ -19,7 +19,7 @@ const state = {
     fontSize: (['small', 'medium', 'large'].includes(localStorage.getItem('mataba-font-size') || '') ? localStorage.getItem('mataba-font-size') : 'medium'),
     section: (window.location.pathname === '/qa' ? 'legalQa' : 'recent'), reviews: [], activeReviewId: null,
     reportTab: 'lawyer', tokenMaps: {}, notice: null,
-    draft: { inputMode: 'file', pastedText: '', file: null, parsed: null, redaction: null, manualValues: [], manualConfirmed: false, contractType: defaultContractType, language: (localStorage.getItem('mataba-language') === 'fr' ? 'fr' : 'en'), busy: false, progress: '', error: '' },
+    draft: { inputMode: 'file', pastedText: '', file: null, parsed: null, redaction: null, manualValues: [], manualConfirmed: false, contractType: defaultContractType, language: (localStorage.getItem('mataba-language') === 'fr' ? 'fr' : 'en'), jurisdictionLevel: '', jurisdictionCode: '', municipalityName: '', busy: false, progress: '', error: '' },
     question: '', qaBusy: false, qaProgress: '', qaAnswer: null, qaHistory: [],
     legalQuestion: '', legalJurisdiction: 'ON', legalJurisdictionLevel: 'provincial', legalMunicipalityName: '', legalLawType: 'employment', legalQaBusy: false, legalQaResult: null,
 };
@@ -74,7 +74,7 @@ function setPreferences() {
     localStorage.setItem('mataba-language', state.language);
 }
 function resetDraft() {
-    state.draft = { inputMode: 'file', pastedText: '', file: null, parsed: null, redaction: null, manualValues: [], manualConfirmed: false, contractType: defaultContractType, language: state.language, busy: false, progress: '', error: '' };
+    state.draft = { inputMode: 'file', pastedText: '', file: null, parsed: null, redaction: null, manualValues: [], manualConfirmed: false, contractType: defaultContractType, language: state.language, jurisdictionLevel: '', jurisdictionCode: '', municipalityName: '', busy: false, progress: '', error: '' };
 }
 async function loadUserData() {
     if (!state.user)
@@ -139,21 +139,37 @@ function recentView() {
     return `<section class="reviews-listing">${state.reviews.length ? `<div class="review-list">${state.reviews.map(reviewRow).join('')}</div>` : `<div class="empty-state"><h3>${t(state.language, 'noReviews')}</h3><p>${t(state.language, 'noReviewsText')}</p><button class="button button-primary" data-action="start-review">${t(state.language, 'newReview')}</button></div>`}</section>`;
 }
 function reviewRow(review) {
-    return `<article class="review-row"><button class="review-row-main" data-action="open-review" data-id="${esc(review.id)}"><span class="file-mark">PDF</span><span class="review-row-copy"><strong>${esc(review.title)}</strong><small>${contractLabel(review.contractType)} · ${dateLabel(review.updatedAt)}</small></span><span class="status-pill status-${review.status}">${statusLabel(review.status)}</span><span class="row-arrow">→</span></button><button class="icon-button row-delete" data-action="delete-review" data-id="${esc(review.id)}" aria-label="${t(state.language, 'delete')}">×</button></article>`;
+    const jurisdiction = reviewJurisdictionLabel(review);
+    return `<article class="review-row"><button class="review-row-main" data-action="open-review" data-id="${esc(review.id)}"><span class="file-mark">PDF</span><span class="review-row-copy"><strong>${esc(review.title)}</strong><small>${contractLabel(review.contractType)} · ${dateLabel(review.updatedAt)}${jurisdiction ? ` · ${esc(jurisdiction)}` : ''}</small></span><span class="status-pill status-${review.status}">${statusLabel(review.status)}</span><span class="row-arrow">→</span></button><button class="icon-button row-delete" data-action="delete-review" data-id="${esc(review.id)}" aria-label="${t(state.language, 'delete')}">×</button></article>`;
 }
 function newReviewView() {
     const d = state.draft;
+    const isFederal = d.jurisdictionLevel === 'federal';
+    const isMunicipal = d.jurisdictionLevel === 'municipal';
+    const jurisdictionPlace = isFederal
+        ? '<input type="hidden" data-field="draftJurisdictionCode" value="CA">'
+        : d.jurisdictionLevel
+            ? `<label class="field-label" for="draft-jurisdiction-code">${isMunicipal ? t(state.language, 'reviewParentJurisdiction') : t(state.language, 'reviewProvinceTerritory')}<select id="draft-jurisdiction-code" data-field="draftJurisdictionCode" required><option value="" disabled ${!d.jurisdictionCode || d.jurisdictionCode === 'CA' ? 'selected' : ''}>${t(state.language, 'selectProvinceTerritory')}</option>${legalJurisdictions.map(item => `<option value="${item.code}" ${d.jurisdictionCode === item.code ? 'selected' : ''}>${esc(state.language === 'fr' ? item.fr : item.en)}</option>`).join('')}</select></label>`
+            : '';
+    const municipalityField = isMunicipal
+        ? `<label class="field-label" for="draft-municipality">${t(state.language, 'reviewMunicipality')}<input id="draft-municipality" data-field="draftMunicipalityName" type="text" minlength="2" maxlength="120" required value="${esc(d.municipalityName)}" placeholder="${t(state.language, 'reviewMunicipalityPlaceholder')}"></label>`
+        : '';
     return `<section class="page-heading"><div><h1>${t(state.language, 'newReview')}</h1><p>${state.language === 'fr' ? 'Téléversez un contrat ou collez son texte pour commencer.' : 'Upload an employment contract or paste its text to begin.'}</p></div></section>
-    <div class="review-form-layout"><div class="form-main">
+    <form data-form="new-review" class="review-form-layout" novalidate><div class="form-main">
       <section class="panel review-input-panel">
+        <div class="field-grid jurisdiction-fields">
+          <label class="field-label" for="draft-jurisdiction-level">${t(state.language, 'reviewJurisdictionLevel')}<select id="draft-jurisdiction-level" data-field="draftJurisdictionLevel" required><option value="" disabled ${!d.jurisdictionLevel ? 'selected' : ''}>${t(state.language, 'selectJurisdictionLevel')}</option><option value="federal" ${d.jurisdictionLevel === 'federal' ? 'selected' : ''}>${t(state.language, 'reviewFederal')}</option><option value="provincial" ${d.jurisdictionLevel === 'provincial' ? 'selected' : ''}>${t(state.language, 'reviewProvinceTerritoryLevel')}</option><option value="municipal" ${isMunicipal ? 'selected' : ''}>${t(state.language, 'reviewMunicipal')}</option></select></label>
+          ${jurisdictionPlace}
+          ${municipalityField}
+        </div>
         <div class="contract-input-tabs" role="group" aria-label="${state.language === 'fr' ? 'Mode de saisie du contrat' : 'Contract input method'}"><button type="button" class="${d.inputMode === 'file' ? 'active' : ''}" data-action="contract-input-mode" data-value="file" aria-pressed="${d.inputMode === 'file'}">${state.language === 'fr' ? 'Téléverser un document' : 'Upload document'}</button><button type="button" class="${d.inputMode === 'text' ? 'active' : ''}" data-action="contract-input-mode" data-value="text" aria-pressed="${d.inputMode === 'text'}">${state.language === 'fr' ? 'Coller le texte' : 'Paste text'}</button></div>
-        ${d.inputMode === 'file' ? `<label class="upload-zone ${d.file ? 'has-file' : ''}" for="contract-file"><input id="contract-file" type="file" data-file-kind="contract" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"><strong>${d.file ? esc(d.file.name) : t(state.language, 'selectFile')}</strong><span>${d.file ? `${(d.file.size / 1048576).toFixed(2)} MB` : t(state.language, 'browseFiles')}</span></label>` : `<label class="field-label paste-contract-label" for="pasted-contract-text">${state.language === 'fr' ? 'Texte du contrat' : 'Contract text'}<textarea id="pasted-contract-text" data-field="pasted-contract-text" rows="14" maxlength="300000" placeholder="${state.language === 'fr' ? 'Collez le texte du contrat ici…' : 'Paste the contract text here…'}">${esc(d.pastedText)}</textarea></label><div class="form-actions compact-actions"><button type="button" class="button button-secondary" data-action="prepare-pasted-contract" ${!d.pastedText.trim() || d.busy ? 'disabled' : ''}>${state.language === 'fr' ? 'Continuer' : 'Continue'}</button></div>`}
+        ${d.inputMode === 'file' ? `<label class="upload-zone ${d.file ? 'has-file' : ''}" for="contract-file"><input id="contract-file" type="file" data-file-kind="contract" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"><strong>${d.file ? esc(d.file.name) : t(state.language, 'selectFile')}</strong><span>${d.file ? `${(d.file.size / 1048576).toFixed(2)} MB` : t(state.language, 'browseFiles')}</span></label>` : `<label class="field-label paste-contract-label" for="pasted-contract-text">${state.language === 'fr' ? 'Texte du contrat' : 'Contract text'}<textarea id="pasted-contract-text" data-field="pasted-contract-text" rows="14" maxlength="300000" minlength="30" placeholder="${state.language === 'fr' ? 'Collez le texte du contrat ici…' : 'Paste the contract text here…'}">${esc(d.pastedText)}</textarea></label><div class="form-actions compact-actions"><button type="button" class="button button-secondary" data-action="prepare-pasted-contract" ${!d.pastedText.trim() || d.busy ? 'disabled' : ''}>${state.language === 'fr' ? 'Continuer' : 'Continue'}</button></div>`}
         ${d.parsed ? `<p class="subtle-note">${d.parsed.pages.length} ${state.language === 'fr' ? 'sections extraites' : 'sections extracted'}</p>` : ''}
-        <div class="field-grid"><label class="field-label">${t(state.language, 'contractType')}<select data-field="contractType">${CONTRACT_TYPES.map((type) => `<option value="${esc(type)}" ${d.contractType === type ? 'selected' : ''}>${contractLabel(type)}</option>`).join('')}</select></label><label class="field-label">${t(state.language, 'reviewLanguage')}<select data-field="draftLanguage"><option value="en" ${d.language === 'en' ? 'selected' : ''}>English</option><option value="fr" ${d.language === 'fr' ? 'selected' : ''}>Français</option></select></label></div>
-        ${d.progress ? `<div class="progress-line" role="status" aria-live="polite">${esc(d.progress)}</div>` : ''}${d.error ? `<div class="inline-error" role="alert">${esc(d.error)}</div>` : ''}
-        <div class="form-actions"><button class="button button-primary" data-action="analyze-contract" ${!d.redaction || d.busy ? 'disabled' : ''}>${d.busy ? `<span class="spinner light"></span>${t(state.language, 'analyzing')}` : `${t(state.language, 'analyzeContract')} →`}</button></div>
+        <div class="field-grid"><label class="field-label" for="draft-contract-type">${t(state.language, 'contractType')}<select id="draft-contract-type" data-field="contractType" required>${CONTRACT_TYPES.map((type) => `<option value="${esc(type)}" ${d.contractType === type ? 'selected' : ''}>${contractLabel(type)}</option>`).join('')}</select></label><label class="field-label" for="draft-language">${t(state.language, 'reviewLanguage')}<select id="draft-language" data-field="draftLanguage" required><option value="en" ${d.language === 'en' ? 'selected' : ''}>English</option><option value="fr" ${d.language === 'fr' ? 'selected' : ''}>Français</option></select></label></div>
+        ${d.progress ? `<div class="progress-line" role="status" aria-live="polite">${esc(d.progress)}</div>` : ''}${d.error ? `<div id="new-review-error" class="inline-error" role="alert" aria-live="assertive">${esc(d.error)}</div>` : ''}
+        <div class="form-actions"><button class="button button-primary" type="submit" ${d.busy ? 'disabled' : ''}>${d.busy ? `<span class="spinner light"></span>${t(state.language, 'analyzing')}` : `${t(state.language, 'analyzeContract')} →`}</button></div>
       </section>
-    </div></div>`;
+    </div></form>`;
 }
 function settingsView() {
     return `<section class="page-heading"><div><h1>${t(state.language, 'settings')}</h1><p>${state.language === 'fr' ? 'Préférences d’affichage.' : 'Display preferences.'}</p></div></section>
@@ -177,7 +193,7 @@ function reviewDetailView() {
     const tab = state.reportTab;
     const reportText = a ? (tab === 'hr' ? a.hrReport || '' : a.lawyerReport) : '';
     return `<div class="detail-heading"><button class="text-button" data-action="back-to-reviews">← ${t(state.language, 'recent')}</button><div class="detail-actions"><span class="status-pill status-${review.status}">${statusLabel(review.status)}</span><button class="button button-secondary button-small" data-action="delete-review" data-id="${esc(review.id)}">${t(state.language, 'delete')}</button></div></div>
-    <section class="detail-title"><h1>${esc(review.title)}</h1><p>${dateLabel(review.updatedAt)} · ${review.pages.length} ${state.language === 'fr' ? 'extraits de source' : 'source excerpts'}</p></section>
+    <section class="detail-title"><h1>${esc(review.title)}</h1><p>${dateLabel(review.updatedAt)} · ${review.pages.length} ${state.language === 'fr' ? 'extraits de source' : 'source excerpts'}${reviewJurisdictionLabel(review) ? ` · ${esc(reviewJurisdictionLabel(review))}` : ''}</p></section>
     ${a ? `<section class="report-summary"><div><h2>${t(state.language, 'summary')}</h2><p>${nl2br(rehydrateText(a.executiveSummary, tokenMap))}</p><div class="evidence-list">${(a.executiveSummaryCitations || []).map(c => reportCitation(c, tokenMap)).join('')}</div></div></section><div class="report-tabs" role="tablist" aria-label="${t(state.language, 'report')}"><button type="button" role="tab" id="report-tab-lawyer" aria-controls="report-panel" aria-selected="${tab === 'lawyer'}" tabindex="${tab === 'lawyer' ? 0 : -1}" class="${tab === 'lawyer' ? 'active' : ''}" data-action="report-tab" data-value="lawyer">${t(state.language, 'lawyerReport')}</button>${supportsHrReport(review.contractType) && a.hrReport ? `<button type="button" role="tab" id="report-tab-hr" aria-controls="report-panel" aria-selected="${tab === 'hr'}" tabindex="${tab === 'hr' ? 0 : -1}" class="${tab === 'hr' ? 'active' : ''}" data-action="report-tab" data-value="hr">${t(state.language, 'hrReport')}</button>` : ''}</div>
       <section class="report-content" id="report-panel" role="tabpanel" tabindex="0" aria-labelledby="report-tab-${tab}"><h2>${tab === 'hr' ? t(state.language, 'hrReport') : t(state.language, 'lawyerReport')}</h2><div class="report-prose">${nl2br(rehydrateText(reportText || a.executiveSummary, tokenMap))}</div>${tab === 'lawyer' ? `<div class="evidence-list">${(a.lawyerReportCitations || []).map(c => reportCitation(c, tokenMap)).join('')}</div>` : (a.hrSections || []).map(section => `<article class="hr-topic"><div class="finding-meta">${esc(hrTopicLabels[state.language][section.topic] || section.topic)} · ${esc(hrStatusLabels[state.language][section.status] || section.status)}</div><p>${nl2br(rehydrateText(section.analysis, tokenMap))}</p>${section.practicalConsiderations ? `<p>${nl2br(rehydrateText(section.practicalConsiderations, tokenMap))}</p>` : ''}<div class="evidence-list">${(section.citations || []).map(c => reportCitation(c, tokenMap)).join('')}</div></article>`).join('')}</section>
       <section class="section-heading"><div><h2>${t(state.language, 'findings')}</h2><p>${state.language === 'fr' ? 'Constats liés aux extraits vérifiés des documents.' : 'Findings linked to verified document excerpts.'}</p></div></section>
@@ -212,7 +228,7 @@ function legalQaView() {
         ? '<input type="hidden" name="jurisdictionCode" value="CA">'
         : `<label class="field-label" for="legal-jurisdiction">${t(state.language, 'legalQaProvince')}<select id="legal-jurisdiction" name="jurisdictionCode" data-field="legalJurisdiction">${legalJurisdictions.map(item => `<option value="${item.code}" ${state.legalJurisdiction === item.code ? 'selected' : ''}>${esc(state.language === 'fr' ? item.fr : item.en)}</option>`).join('')}</select></label>`;
     const municipalField = isMunicipal
-        ? `<label class="field-label" for="legal-municipality">${t(state.language, 'legalQaMunicipality')}<input id="legal-municipality" name="municipalityName" data-field="legalMunicipalityName" aria-describedby="legal-qa-municipal-note" type="text" maxlength="120" required value="${esc(state.legalMunicipalityName)}" placeholder="${t(state.language, 'legalQaMunicipalityPlaceholder')}"></label><p id="legal-qa-municipal-note" class="legal-qa-location-note">${t(state.language, 'legalQaMunicipalNote')}</p>`
+        ? `<label class="field-label" for="legal-municipality">${t(state.language, 'legalQaMunicipality')}<input id="legal-municipality" name="municipalityName" data-field="legalMunicipalityName" type="text" maxlength="120" required value="${esc(state.legalMunicipalityName)}" placeholder="${t(state.language, 'legalQaMunicipalityPlaceholder')}"></label>`
         : '';
     const resultContext = result ? `<p class="legal-qa-source-context">${result.municipalityName ? `${t(state.language, 'legalQaMunicipality')}: ${esc(result.municipalityName)} · ` : ''}${t(state.language, 'legalQaSourceLevel')}: ${t(state.language, `legalQaLevel_${result.sourceLevel}`)}</p>` : '';
     return `<section class="page-heading"><div><h1>${t(state.language, 'legalQa')}</h1><p>${t(state.language, 'legalQaIntro')}</p></div></section>
@@ -300,9 +316,85 @@ function safeReviewTitle(type, language) {
     const fr = { 'Employment Agreement': 'Examen du contrat de travail', 'Job Offer': 'Examen de l’offre d’emploi', 'Severance Agreement': 'Examen de l’entente de départ', 'Service/Vendor Contract': 'Examen du contrat de services', Lease: 'Examen du bail', General: 'Examen du contrat' };
     return (language === 'fr' ? fr : en)[type];
 }
+function analysisJurisdictionLevel(level, code) {
+    if (level === 'federal' || level === 'municipal')
+        return level;
+    return ['NT', 'NU', 'YT'].includes(code) ? 'territorial' : 'provincial';
+}
+function reviewJurisdictionLabel(review) {
+    if (!review?.jurisdictionLevel)
+        return '';
+    if (review.jurisdictionLevel === 'federal')
+        return t(state.language, 'reviewFederal');
+    const region = legalJurisdictions.find(item => item.code === review.jurisdictionCode);
+    const regionName = region ? (state.language === 'fr' ? region.fr : region.en) : review.jurisdictionCode;
+    if (review.jurisdictionLevel === 'municipal')
+        return `${review.municipalityName || ''}${review.municipalityName ? ', ' : ''}${regionName}`;
+    return regionName || t(state.language, 'reviewProvinceTerritoryLevel');
+}
+function clearNewReviewValidation(target) {
+    state.draft.error = '';
+    app.querySelector('#new-review-error')?.remove();
+    app.querySelectorAll('[aria-invalid="true"]').forEach((field) => {
+        field.removeAttribute('aria-invalid');
+        field.removeAttribute('aria-describedby');
+    });
+    target?.removeAttribute('aria-invalid');
+    target?.removeAttribute('aria-describedby');
+}
+function validateNewReview() {
+    const d = state.draft;
+    let invalidField = '';
+    let message = '';
+    if (!['federal', 'provincial', 'municipal'].includes(d.jurisdictionLevel)) {
+        invalidField = 'draftJurisdictionLevel';
+        message = t(state.language, 'reviewChooseJurisdictionLevel');
+    }
+    else if (d.jurisdictionLevel !== 'federal' && !legalJurisdictions.some(item => item.code === d.jurisdictionCode)) {
+        invalidField = 'draftJurisdictionCode';
+        message = t(state.language, 'reviewChooseProvinceTerritory');
+    }
+    else if (d.jurisdictionLevel === 'municipal' && d.municipalityName.trim().length < 2) {
+        invalidField = 'draftMunicipalityName';
+        message = t(state.language, 'reviewEnterMunicipality');
+    }
+    else if (!CONTRACT_TYPES.includes(d.contractType)) {
+        invalidField = 'contractType';
+        message = t(state.language, 'reviewChooseContractType');
+    }
+    else if (!['en', 'fr'].includes(d.language)) {
+        invalidField = 'draftLanguage';
+        message = t(state.language, 'reviewChooseLanguage');
+    }
+    else if (!d.file || !d.parsed || !d.redaction || !d.manualConfirmed) {
+        invalidField = d.inputMode === 'text' ? 'pasted-contract-text' : 'contract-file';
+        message = t(state.language, 'reviewSelectReadableContract');
+    }
+    if (message) {
+        d.error = message;
+        render();
+        const field = app.querySelector(`[data-field="${invalidField}"]`) || app.querySelector(`#${invalidField}`);
+        if (field) {
+            field.setAttribute('aria-invalid', 'true');
+            field.setAttribute('aria-describedby', 'new-review-error');
+            field.focus();
+        }
+        return false;
+    }
+    d.jurisdictionCode = d.jurisdictionLevel === 'federal' ? 'CA' : d.jurisdictionCode;
+    if (d.jurisdictionLevel !== 'municipal')
+        d.municipalityName = '';
+    d.error = '';
+    return true;
+}
+async function submitNewReview() {
+    if (!validateNewReview())
+        return;
+    await persistReview(true);
+}
 async function persistReview(analyze) {
     const d = state.draft;
-    if (!state.user || !d.file || !d.parsed || !d.redaction) {
+    if (!state.user || !d.file || !d.parsed || !d.redaction || !d.manualConfirmed) {
         d.error = t(state.language, 'manualReviewNeeded');
         render();
         return;
@@ -323,10 +415,10 @@ async function persistReview(analyze) {
         const pages = contractPages;
         let analysis;
         if (analyze) {
-            analysis = await generateContractAnalysis({ contractType: d.contractType, language: d.language, contractPages, referencePages, privacyConfirmed: true, onProgress: (message) => { d.progress = message; render(); } });
+            analysis = await generateContractAnalysis({ contractType: d.contractType, language: d.language, jurisdictionLevel: analysisJurisdictionLevel(d.jurisdictionLevel, d.jurisdictionCode), jurisdictionCode: d.jurisdictionLevel === 'federal' ? 'CA' : d.jurisdictionCode, municipalityName: d.jurisdictionLevel === 'municipal' ? d.municipalityName.trim() : undefined, contractPages, referencePages, privacyConfirmed: true, onProgress: (message) => { d.progress = message; render(); } });
         }
         const now = Date.now();
-        const review = { id, userId: state.user.uid, title: safeReviewTitle(d.contractType, d.language), fileName: contractSourceName, contractType: d.contractType, language: d.language, status: analysis ? 'analyzed' : 'draft', createdAt: now, updatedAt: now, pages, analysis };
+        const review = { id, userId: state.user.uid, title: safeReviewTitle(d.contractType, d.language), fileName: contractSourceName, contractType: d.contractType, language: d.language, jurisdictionLevel: analysisJurisdictionLevel(d.jurisdictionLevel, d.jurisdictionCode), jurisdictionCode: d.jurisdictionLevel === 'federal' ? 'CA' : d.jurisdictionCode, ...(d.jurisdictionLevel === 'municipal' ? { municipalityName: d.municipalityName.trim() } : {}), status: analysis ? 'analyzed' : 'draft', createdAt: now, updatedAt: now, pages, analysis };
         await saveReview(review);
         const combinedTokenMap = { ...d.redaction.tokenMap };
         await savePiiTokenMap(state.user.uid, review.id, combinedTokenMap);
@@ -457,7 +549,9 @@ async function handleClick(button, keyboardActivation = false) {
     else if (action === 'prepare-pasted-contract') {
         const text = state.draft.pastedText.trim();
         if (text.length < 30) {
-            notice('error', state.language === 'fr' ? 'Collez davantage de texte du contrat.' : 'Paste more contract text before continuing.');
+            state.draft.error = state.language === 'fr' ? 'Collez au moins 30 caractères de texte du contrat.' : 'Paste at least 30 characters of contract text.';
+            render();
+            app.querySelector('[data-field="pasted-contract-text"]')?.focus();
             return;
         }
         const file = new File([text], 'pasted-contract.txt', { type: 'text/plain' });
@@ -481,8 +575,6 @@ async function handleClick(button, keyboardActivation = false) {
         state.draft.manualConfirmed = false;
         render();
     }
-    else if (action === 'analyze-contract')
-        await persistReview(true);
     else if (action === 'report-tab') {
         state.reportTab = button.dataset.value;
         render();
@@ -522,12 +614,31 @@ app.addEventListener('change', (event) => {
     const target = event.target;
     if (target.matches('[data-file-kind]') && target instanceof HTMLInputElement && target.files?.[0])
         void selectDocument(target.files[0], target.dataset.fileKind);
+    else if (target.matches('[data-field="draftJurisdictionLevel"]')) {
+        state.draft.jurisdictionLevel = target.value;
+        if (target.value === 'federal') {
+            state.draft.jurisdictionCode = 'CA';
+            state.draft.municipalityName = '';
+        }
+        else {
+            if (state.draft.jurisdictionCode === 'CA') state.draft.jurisdictionCode = '';
+            if (target.value !== 'municipal') state.draft.municipalityName = '';
+        }
+        clearNewReviewValidation(target);
+        render();
+        app.querySelector('[data-field="draftJurisdictionLevel"]')?.focus();
+    }
+    else if (target.matches('[data-field="draftJurisdictionCode"]')) {
+        state.draft.jurisdictionCode = target.value;
+        clearNewReviewValidation(target);
+    }
     else if (target.matches('[data-field="contractType"]')) {
         state.draft.contractType = target.value;
-        render();
+        clearNewReviewValidation(target);
     }
     else if (target.matches('[data-field="draftLanguage"]')) {
         state.draft.language = target.value;
+        clearNewReviewValidation(target);
     }
     else if (target.matches('[data-field="legalJurisdiction"]')) {
         state.legalJurisdiction = target.value;
@@ -554,8 +665,13 @@ app.addEventListener('input', (event) => {
     const target = event.target;
     if (target.matches('[data-field="legalMunicipalityName"]'))
         state.legalMunicipalityName = target.value;
+    if (target.matches('[data-field="draftMunicipalityName"]')) {
+        state.draft.municipalityName = target.value;
+        if (state.draft.error) clearNewReviewValidation(target);
+    }
     if (target.matches('[data-field="pasted-contract-text"]')) {
         const textarea = target;
+        if (state.draft.error) clearNewReviewValidation(target);
         state.draft.pastedText = textarea.value;
         if (state.draft.file?.name === 'pasted-contract.txt') {
             state.draft.file = null;
@@ -589,6 +705,8 @@ app.addEventListener('submit', (event) => {
         void askOffline(form);
     else if (kind === 'legal-qa')
         void askLegalQuestion(form);
+    else if (kind === 'new-review')
+        void submitNewReview();
 });
 async function askLegalQuestion(form) {
     const data = new FormData(form);

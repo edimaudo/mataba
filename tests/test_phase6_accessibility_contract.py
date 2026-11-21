@@ -223,8 +223,8 @@ def test_font_scale_is_consistent_at_initial_and_final_stylesheet_rules():
 
 def test_stylesheet_cache_version_is_updated_on_app_and_landing_pages():
     landing = (ROOT / "app" / "templates" / "landing.html").read_text(encoding="utf-8")
-    assert "/css/styles.css?v=2.9.9" in HTML
-    assert "/css/styles.css?v=2.9.9" in landing
+    assert "/css/styles.css?v=2.9.10" in HTML
+    assert "/css/styles.css?v=2.9.10" in landing
 
 
 def test_pointer_setting_changes_do_not_restore_keyboard_focus_ring():

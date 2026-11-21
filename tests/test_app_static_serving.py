@@ -189,3 +189,30 @@ def test_landing_information_cards_are_equal_height_and_responsive():
     assert ".landing-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));" in stylesheet
     assert ".landing-card { box-sizing: border-box; display: flex; flex-direction: column; min-height: 205px; height: 100%;" in stylesheet
     assert ".landing-cards { grid-template-columns: 1fr;" in stylesheet
+
+
+def test_new_review_requires_jurisdiction_and_contains_conditional_location_fields():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "app" / "static" / "js" / "main.js").read_text(encoding="utf-8")
+    translations = (root / "app" / "static" / "js" / "i18n.js").read_text(encoding="utf-8")
+    assert 'data-form="new-review"' in source
+    assert "type=\"submit\" ${d.busy ? 'disabled' : ''}" in source
+    assert 'data-field="draftJurisdictionLevel" required' in source
+    assert 'data-field="draftJurisdictionCode" required' in source
+    assert 'data-field="draftMunicipalityName"' in source
+    assert "function validateNewReview()" in source
+    assert "reviewChooseJurisdictionLevel" in source
+    assert "reviewChooseProvinceTerritory" in source
+    assert "reviewEnterMunicipality" in source
+    assert "jurisdictionLevel: analysisJurisdictionLevel" in source
+    assert "reviewJurisdictionLevel: 'Jurisdiction level'" in translations
+    assert "reviewJurisdictionLevel: 'Palier de compétence'" in translations
+
+
+def test_legal_qa_municipal_context_paragraph_is_removed_in_both_languages():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "app" / "static" / "js" / "main.js").read_text(encoding="utf-8")
+    translations = (root / "app" / "static" / "js" / "i18n.js").read_text(encoding="utf-8")
+    assert "For this Employment law release, the municipality adds local context." not in source + translations
+    assert "Dans cette version du droit du travail, la municipalité précise le contexte local." not in source + translations
+    assert "legalQaMunicipalNote" not in source + translations
