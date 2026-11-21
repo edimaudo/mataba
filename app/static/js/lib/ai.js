@@ -121,7 +121,7 @@ function verifyLocalCitations(rawCitations, sourceMap) {
 }
 export async function generateContractAnalysis(args) {
     if (!args.privacyConfirmed)
-        throw new Error('Review the sanitized text before sending it to cloud analysis.');
+        throw new Error('A locally sanitized document is required before analysis.');
     const totalLength = [...args.contractPages, ...args.referencePages].reduce((sum, page) => sum + page.text.length, 0);
     if (totalLength > 150_000)
         throw new Error('The extracted text exceeds the 150,000-character review limit. Split the document into smaller files and review them separately.');

@@ -13,7 +13,7 @@ import httpx
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE_URL = os.getenv("MATAB_TEST_URL", "http://127.0.0.1:8080")
+BASE_URL = os.getenv("MATAB_TEST_URL", "http://127.0.0.1:8093")
 AXE_SCRIPT_URL = "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.3/axe.min.js"
 
 
@@ -94,6 +94,9 @@ def main() -> int:
             record("App opens directly without a sign-in screen", page.locator(".app-shell").count() == 1)
             record("App has no sign-in or sign-out controls", page.get_by_text("Sign in", exact=True).count() == 0 and page.get_by_text("Sign out", exact=True).count() == 0)
             record("App has no footer", page.locator("footer").count() == 0)
+            record("Navigation has no contract library or reference material tabs", page.get_by_role("navigation").get_by_text("Contracts Library", exact=True).count() == 0 and page.get_by_role("navigation").get_by_text("Reference Materials", exact=True).count() == 0)
+            record("Navigation includes Settings", page.get_by_role("navigation").get_by_text("Settings", exact=True).count() == 1)
+            record("App does not expose infrastructure diagnostics", page.get_by_text("Python API", exact=False).count() == 0 and page.get_by_text("Firebase", exact=False).count() == 0)
             record("App has one primary page heading", page.locator("main h1").count() == 1)
             record("Main landmark has a programmatic focus target", page.locator("main#main-content[tabindex='-1']").count() == 1)
             record("Rendered buttons have explicit types", page.locator("button:not([type])").count() == 0)
@@ -101,6 +104,8 @@ def main() -> int:
                 "fields => fields.every(field => Boolean(field.getAttribute('aria-label') || field.getAttribute('aria-labelledby') || field.labels?.length))"
             )
             record("Visible form fields have accessible names", fields_named)
+            record("Reviews page has a New Review action", page.locator(".app-page-title [data-action='start-review']").count() == 1)
+            record("Reviews page uses a flat list rather than statistic cards", page.locator(".stat-grid, .stat-tile").count() == 0)
             axe_scan("Application home on desktop")
 
             page.locator("[data-action='navigate'][data-section='settings']").click()
@@ -112,10 +117,10 @@ def main() -> int:
             page.locator("[data-action='set-font'][data-value='large']").click()
             record("Large typography sets 1.25em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "20px")
             record("Font control retains keyboard focus", page.evaluate("document.activeElement?.getAttribute('data-value') === 'large'"))
-            page.locator("[data-action='toggle-language']").click()
+            page.locator("[data-action='set-language'][data-value='fr']").click()
             record("French selection updates document language", page.locator("html").get_attribute("lang") == "fr-CA")
             record("French settings heading is translated", (page.locator("main h1").text_content() or "").strip() == "Paramètres")
-            record("Language control retains keyboard focus", page.evaluate("document.activeElement?.matches('[data-action=toggle-language]')"))
+            record("Language control retains keyboard focus", page.evaluate("document.activeElement?.matches('[data-action=set-language]')"))
             record("Segmented controls expose pressed state", page.locator(".segmented-control button").evaluate_all("items => items.length > 0 && items.every(item => item.hasAttribute('aria-pressed'))"))
             axe_scan("French settings, dark theme and large typography")
 
@@ -127,8 +132,8 @@ def main() -> int:
             record("Light theme restores document state", page.locator("html").get_attribute("data-theme") == "light")
             axe_scan("French settings, light theme and medium typography")
 
-            page.locator("[data-action='toggle-language']").click()
-            for section in ["new", "references", "library", "recent", "legalQa"]:
+            page.locator("[data-action='set-language'][data-value='en']").click()
+            for section in ["new", "recent", "legalQa", "settings"]:
                 page.locator(f".app-primary-nav [data-action='navigate'][data-section='{section}']").click()
                 page.locator("main h1").wait_for(state="visible")
                 fields_named = page.locator("input:not([type='hidden']), select, textarea").evaluate_all(
@@ -136,6 +141,9 @@ def main() -> int:
                 )
                 record(f"{section} page: all form fields have accessible names", fields_named)
                 record(f"{section} page: no missing button types", page.locator("button:not([type])").count() == 0)
+                if section == "new":
+                    record("New Review has no reference-material or privacy side panels", page.get_by_text("Reference Materials", exact=True).count() == 0 and page.get_by_text("Privacy protection", exact=True).count() == 0 and page.locator(".review-aside").count() == 0)
+                    record("New Review has no Save as draft action", page.get_by_text("Save as draft", exact=True).count() == 0)
                 axe_scan(f"{section} page")
 
             page.set_viewport_size({"width": 390, "height": 844})

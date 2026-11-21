@@ -14,7 +14,7 @@ from .schemas import (
 from .services.analysis import build_analysis_prompt, build_follow_up_prompt, verify_analysis, verify_follow_up
 from .services.firebase_ai_logic import FirebaseAILogicError, firebase_ai_logic_http_status, generate_from_template
 from .services.privacy_guard import require_sanitized_text
-from .services.legal_sources import LAW_SOURCES, retrieve_law_passages
+from .services.legal_sources import LAW_SOURCES, LAWYER_DIRECTORIES, retrieve_law_passages
 from .services.legal_qa import build_legal_qa_prompt, verify_legal_qa
 
 settings = get_settings()
@@ -25,7 +25,7 @@ STATIC_DIR = APP_DIR / "static"
 
 app = FastAPI(
     title="Mataba",
-    version="2.9.5",
+    version="2.9.6",
     description=(
         "Python FastAPI application serving Mataba's pages, static JavaScript and API routes. "
         "Firebase AI Logic is the cloud inference integration."
@@ -217,6 +217,15 @@ async def legal_qa_jurisdictions(identity: Identity = Depends(require_identity))
     return [
         {"code": source.code, "jurisdiction": source.jurisdiction, "level": source.level, "actTitle": source.act_title, "officialUrl": source.official_url}
         for source in LAW_SOURCES.values()
+    ]
+
+
+@app.get("/api/legal-qa/lawyer-directories")
+async def legal_qa_lawyer_directories(identity: Identity = Depends(require_identity)):
+    """Return curated law-society directories for finding employment-law counsel."""
+    return [
+        {"code": code, **directory}
+        for code, directory in LAWYER_DIRECTORIES.items()
     ]
 
 

@@ -155,3 +155,53 @@ async def test_unknown_jurisdiction_is_rejected_without_fetching_a_url():
     with pytest.raises(HTTPException) as error:
         await legal_sources.retrieve_law_passages("ZZ", "employment standards")
     assert error.value.status_code == 422
+
+
+def test_employment_law_reference_registry_uses_the_supplied_official_sources():
+    expected = {
+        "AB": "https://kings-printer.alberta.ca/1266.cfm?page=1997_014.cfm&leg_type=Regs&isbncln=9780779858910&display=html",
+        "BC": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96113_01",
+        "MB": "https://web2.gov.mb.ca/laws/statutes/ccsm/_pdf.php?cap=e110",
+        "NB": "https://laws.gnb.ca/en/pdf/cs/E-7.2.pdf",
+        "NS": "https://www.nslegislature.ca/sites/default/files/legc/statutes/labour%20standards%20code.pdf",
+        "ON": "https://www.ontario.ca/laws/statute/00e41",
+        "PE": "https://www.princeedwardisland.ca/sites/default/files/b281/E-6.3-Employment%20Standards%20Act.pdf",
+        "QC": "https://www.legisquebec.gouv.qc.ca/en/pdf/cs/N-1.1.pdf",
+        "SK": "https://publications.saskatchewan.ca/api/v1/products/70351/formats/78194/download",
+        "NT": "https://www.justice.gov.nt.ca/en/files/legislation/employment-standards/employment-standards.a.pdf",
+        "NU": "https://www.gov.nu.ca/sites/default/files/policies-legislations/2025-11/Labour_Standards_Act__2022_.pdf",
+        "YT": "https://laws.yukon.ca/cms/images/LEGISLATION/PRINCIPAL/2002/2002-0072/2002-0072.pdf",
+    }
+    for code, url in expected.items():
+        assert legal_sources.LAW_SOURCES[code].official_url == url
+    assert legal_sources.LAW_SOURCES["AB"].act_title.startswith("Employment Standards Regulation")
+    # Newfoundland and Labrador remains in the complete jurisdiction registry.
+    assert legal_sources.LAW_SOURCES["NL"].official_url.startswith("https://")
+
+
+def test_lawyer_directory_registry_covers_every_province_and_territory():
+    expected = {"AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"}
+    assert set(legal_sources.LAWYER_DIRECTORIES) == expected
+    for directory in legal_sources.LAWYER_DIRECTORIES.values():
+        assert directory["directory_name"]
+        assert str(directory["directory_url"]).startswith("https://")
+    assert legal_sources.LAWYER_DIRECTORIES["AB"]["additional"][0]["url"] == "https://cba-alberta.org"
+
+
+def test_lawyer_directory_api_returns_curated_directories(monkeypatch):
+    from app.security import Identity, require_identity
+    from app import main
+    main.app.dependency_overrides[require_identity] = lambda: Identity(
+        uid="directory-test-user", email=None, firebase_id_token="test-token", app_check_token=None
+    )
+    try:
+        from fastapi.testclient import TestClient
+        with TestClient(main.app) as client:
+            response = client.get("/api/legal-qa/lawyer-directories")
+        assert response.status_code == 200
+        results = {item["code"]: item for item in response.json()}
+        assert set(results) == set(legal_sources.LAWYER_DIRECTORIES)
+        assert results["ON"]["directory_name"].startswith("Law Society of Ontario")
+        assert results["AB"]["additional"][0]["name"] == "CBA Alberta Labour & Employment Section"
+    finally:
+        main.app.dependency_overrides.pop(require_identity, None)

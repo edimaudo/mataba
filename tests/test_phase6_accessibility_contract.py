@@ -111,3 +111,50 @@ def test_custom_404_page_has_home_and_legal_qa_navigation():
     assert 'href="/qa"' in not_found
     assert "localStorage.getItem('mataba-language')" in not_found
     assert "min-width:320px" in not_found
+
+
+def test_application_navigation_and_new_review_follow_the_revised_product_scope():
+    assert "navItem('recent', 'reviews', '')" in MAIN
+    assert "navItem('new', 'newReview', '')" in MAIN
+    assert "navItem('settings', 'settings', '')" in MAIN
+    assert "navItem('library'" not in MAIN
+    assert "navItem('references'" not in MAIN
+    assert 'function libraryView()' not in MAIN
+    assert 'function referencesView()' not in MAIN
+    assert 'save-draft' not in MAIN
+    assert 'Save as draft' not in MAIN
+    assert 'Python API' not in MAIN
+    assert 'Firebase configured' not in MAIN
+    assert 'AI processing and data residency' not in MAIN
+    assert 'class="review-aside"' not in MAIN
+    assert 'privacyShield' not in MAIN
+    assert 'await runRedaction();' in MAIN
+
+
+def test_settings_controls_are_available_in_settings_section_and_persist_preferences():
+    settings = MAIN.split('function settingsView()', 1)[1].split('function reportCitation', 1)[0]
+    assert 'data-action="set-language"' in settings
+    assert 'data-action="set-font"' in settings
+    assert 'data-action="set-theme"' in settings
+    assert "localStorage.setItem('mataba-theme'" in MAIN
+    assert "localStorage.setItem('mataba-font-size'" in MAIN
+    assert "localStorage.setItem('mataba-language'" in MAIN
+
+
+def test_navigation_active_state_has_no_blue_vertical_marker():
+    assert '.app-primary-nav .nav-item.active { color: var(--text); border-bottom: 2px solid #a88b5a; background: transparent; box-shadow: none !important;' in CSS
+
+
+def test_revised_light_and_dark_palette_preserves_wcag_aa_text_contrast():
+    def ratio(foreground, background):
+        def luminance(value):
+            channels = [int(value[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+            linear = [channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+        first, second = luminance(foreground), luminance(background)
+        return (max(first, second) + 0.05) / (min(first, second) + 0.05)
+
+    assert ratio("#596570", "#ffffff") >= 4.5
+    assert ratio("#65717a", "#ffffff") >= 4.5
+    assert ratio("#b2bbc1", "#20272c") >= 4.5
+    assert ratio("#8e9aa3", "#20272c") >= 4.5

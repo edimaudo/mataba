@@ -1,4 +1,4 @@
-# Mataba 2.9.5
+# Mataba 2.9.6
 
 Mataba is a Canadian contract-review application. It is one **Python + FastAPI** application. The browser interface is plain **HTML, CSS and native JavaScript** served by that same FastAPI application. Firebase AI Logic is the cloud Gemini integration.
 
@@ -187,3 +187,5 @@ Vercel's `yul1` setting controls where the FastAPI function executes; it does no
 Legal Q&A currently covers employment standards and labour legislation only. The source registry includes a principal employment/labour statute for Canada and each province/territory. Municipal registry support exists, but there are no municipal employment-law entries yet. If retrieved text does not support an answer, Mataba withholds an unsupported conclusion. Firebase anonymous authentication and App Check are required for online Q&A.
 
 PDF page references are preserved. DOCX page references are only available where the file contains explicit page-break markers; scanned PDFs are not OCR-processed. The privacy scan is a best-effort safeguard and requires the user's manual review before cloud analysis.
+
+- Version 2.9.6: replaced the generic dashboard presentation with a flatter, document-led interface; moved language, text-size and theme controls into Settings; removed contract-library and reference-material navigation; renamed Recent Reviews to Reviews and added a direct New Review action; removed privacy/verifiable-source side panels and Save as draft; moved PII masking into automatic background processing after document extraction; removed Firebase/Python implementation diagnostics from the interface; added a curated lawyer-directory registry and API endpoint for all provinces and territories.

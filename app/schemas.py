@@ -49,7 +49,7 @@ class AnalyzeRequest(BaseModel):
     @classmethod
     def require_privacy_confirmation(cls, value: bool) -> bool:
         if value is not True:
-            raise ValueError("The sanitized text must be reviewed before analysis.")
+            raise ValueError("A locally sanitized document is required before analysis.")
         return value
 
 

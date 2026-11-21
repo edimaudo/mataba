@@ -44,7 +44,7 @@ class LawPassage:
 
 LAW_SOURCES: dict[str, LawSource] = {
     "CA": LawSource("CA", "Federal (federally regulated workplaces)", "Canada Labour Code", "https://laws-lois.justice.gc.ca/eng/acts/L-2/FullText.html", level="federal"),
-    "AB": LawSource("AB", "Alberta", "Employment Standards Code", "https://kings-printer.alberta.ca/1266.cfm?page=1997_014.cfm&leg_type=Regs&isbncln=9780779858910&display=html"),
+    "AB": LawSource("AB", "Alberta", "Employment Standards Regulation (under the Employment Standards Code)", "https://kings-printer.alberta.ca/1266.cfm?page=1997_014.cfm&leg_type=Regs&isbncln=9780779858910&display=html"),
     "BC": LawSource("BC", "British Columbia", "Employment Standards Act", "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96113_01"),
     "MB": LawSource("MB", "Manitoba", "The Employment Standards Code", "https://web2.gov.mb.ca/laws/statutes/ccsm/_pdf.php?cap=e110"),
     "NB": LawSource("NB", "New Brunswick", "Employment Standards Act", "https://laws.gnb.ca/en/pdf/cs/E-7.2.pdf"),
@@ -57,6 +57,22 @@ LAW_SOURCES: dict[str, LawSource] = {
     "QC": LawSource("QC", "Quebec", "Act respecting labour standards", "https://www.legisquebec.gouv.qc.ca/en/pdf/cs/N-1.1.pdf"),
     "SK": LawSource("SK", "Saskatchewan", "The Saskatchewan Employment Act", "https://publications.saskatchewan.ca/api/v1/products/70351/formats/78194/download"),
     "YT": LawSource("YT", "Yukon", "Employment Standards Act", "https://laws.yukon.ca/cms/images/LEGISLATION/PRINCIPAL/2002/2002-0072/2002-0072.pdf", level="territorial"),
+}
+
+LAWYER_DIRECTORIES: dict[str, dict[str, str | list[dict[str, str]]]] = {
+    "AB": {"jurisdiction": "Alberta", "directory_name": "Law Society of Alberta Lawyer Directory", "directory_url": "https://lawsociety.ab.ca", "additional": [{"name": "CBA Alberta Labour & Employment Section", "url": "https://cba-alberta.org"}]},
+    "BC": {"jurisdiction": "British Columbia", "directory_name": "Law Society of British Columbia Lawyer Directory", "directory_url": "https://lawsociety.bc.ca"},
+    "MB": {"jurisdiction": "Manitoba", "directory_name": "Law Society of Manitoba Lawyer Lookup", "directory_url": "https://lawsociety.mb.ca"},
+    "NB": {"jurisdiction": "New Brunswick", "directory_name": "Law Society of New Brunswick Member Directory", "directory_url": "https://lawsociety-barreau.nb.ca"},
+    "NL": {"jurisdiction": "Newfoundland and Labrador", "directory_name": "Law Society of Newfoundland and Labrador Directory", "directory_url": "https://lawsociety.nf.ca"},
+    "NS": {"jurisdiction": "Nova Scotia", "directory_name": "Nova Scotia Barristers’ Society Member Directory", "directory_url": "https://nsbs.org"},
+    "NT": {"jurisdiction": "Northwest Territories", "directory_name": "Law Society of the Northwest Territories Directory", "directory_url": "https://lawsociety.nt.ca"},
+    "NU": {"jurisdiction": "Nunavut", "directory_name": "Law Society of Nunavut Member Directory", "directory_url": "https://lawsociety.nu.ca"},
+    "ON": {"jurisdiction": "Ontario", "directory_name": "Law Society of Ontario Certified Specialists in Labour and Employment Law", "directory_url": "https://lso.ca", "additional": [{"name": "Law Society Referral Service", "url": "https://lso.ca"}]},
+    "PE": {"jurisdiction": "Prince Edward Island", "directory_name": "Law Society of Prince Edward Island Directory", "directory_url": "https://lawsocietypei.ca"},
+    "QC": {"jurisdiction": "Quebec", "directory_name": "Barreau du Québec Bottin des avocats", "directory_url": "https://barreau.qc.ca"},
+    "SK": {"jurisdiction": "Saskatchewan", "directory_name": "Law Society of Saskatchewan Find a Lawyer", "directory_url": "https://lawsociety.sk.ca"},
+    "YT": {"jurisdiction": "Yukon", "directory_name": "Law Society of Yukon Directory", "directory_url": "https://lawsocietyyukon.com"},
 }
 
 # Municipal sources are deliberately curated and keyed by parent province/territory,
