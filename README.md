@@ -1,4 +1,4 @@
-# Mataba 2.9.4
+# Mataba 2.9.5
 
 Mataba is a Canadian contract-review application. It is one **Python + FastAPI** application. The browser interface is plain **HTML, CSS and native JavaScript** served by that same FastAPI application. Firebase AI Logic is the cloud Gemini integration.
 
@@ -18,7 +18,7 @@ mataba/
 │   ├── services/                   # Python application logic
 │   ├── templates/
 │   │   ├── landing.html             # Public landing page at /
-│   │   ├── index.html               # Sign-in and application shell
+│   │   ├── index.html               # Application shell
 │   │   └── 404.html
 │   └── static/
 │       ├── config.js               # Public Firebase web-app settings only
@@ -36,7 +36,7 @@ mataba/
 └── vercel.json
 ```
 
-FastAPI serves the public landing page at `/`, sign-in at `/signin`, the authenticated application at `/app` (and standalone Legal Q&A at `/qa`), static files and all `/api/*` endpoints. The browser JavaScript is already in executable `.js` files; no frontend compilation or generated `public/` directory is required.
+FastAPI serves the public landing page at `/`, the application at `/app` (and standalone Legal Q&A at `/qa`), static files and all `/api/*` endpoints. The app creates a silent Firebase anonymous session when configured; `/signin` is a compatibility redirect to `/app`. The browser JavaScript is already in executable `.js` files; no frontend compilation or generated `public/` directory is required.
 
 The browser loads the pinned Firebase, PDF.js, Mammoth, Dexie and fflate libraries directly from their CDN URLs in the HTML import map/script tags. These are browser libraries, not a Node application or a separate frontend server. The only Python runtime dependency installation is from `requirements.txt`.
 
@@ -69,7 +69,7 @@ Browser: HTML + CSS + native JavaScript
             Gemini model
 ```
 
-FastAPI handles authentication and App Check verification, request validation, application logic, Firebase AI Logic prompt-template calls, citation verification, rate limits and privacy checks. The browser Firebase SDK is used for Firebase sign-in, App Check tokens, Firestore persistence and supported on-device Gemini Nano functionality.
+FastAPI handles authentication and App Check verification, request validation, application logic, Firebase AI Logic prompt-template calls, citation verification, rate limits and privacy checks. The browser Firebase SDK creates an anonymous guest session without an email/password screen and is used for ID tokens, App Check tokens, Firestore persistence and supported on-device Gemini Nano functionality. Enable the Anonymous provider under Firebase Authentication for cloud features. When Firebase is not configured, the interface uses a device-local guest identity and saves drafts locally; cloud analysis and Legal Q&A remain unavailable until Firebase and App Check are configured.
 
 ## Local setup
 
@@ -87,7 +87,7 @@ source .venv/bin/activate
 pip install -r requirements-dev.txt
 ```
 
-Set up Firebase configuration:
+Set up Firebase configuration. Enable the **Anonymous** sign-in provider under Firebase Console → Authentication → Sign-in method; the application uses this for silent guest sessions and does not show an email/password sign-in page:
 
 ```bash
 cp .env.example .env
@@ -107,7 +107,7 @@ Run the application:
 python scripts/dev.py
 ```
 
-Open `http://127.0.0.1:8080` for the public landing page. Sign in at `/signin`; the application is served at `/app`. The development script starts one Uvicorn/FastAPI server. No browser build or separate frontend process is run.
+Open `http://127.0.0.1:8080` for the public landing page and use **Start a review** to open `/app`. No sign-in step is presented. The development script starts one Uvicorn/FastAPI server. No browser build or separate frontend process is run.
 
 Alternatively, run FastAPI directly:
 
@@ -175,14 +175,15 @@ The browser tests load axe-core from its pinned CDN URL. They do not install or 
 - Phase 2: browser document extraction, local PII detection/redaction, encrypted IndexedDB PII vault and evidence metadata.
 - Phase 3: contract analysis, source citation verification, lawyer-style report and gated HR report sections.
 - Phase 4: excluded, as requested.
-- Phase 5: Firebase ID token/App Check checks, request-size and rate limits, residual-PII guard, Firestore/Storage rules and account deletion sequence.
+- Phase 5: Firebase ID token/App Check checks, request-size and rate limits, residual-PII guard and Firestore/Storage rules.
 - Phase 6: English/French UI, keyboard/focus behavior, responsive navigation, light/dark theme, font scaling and accessibility support.
-- Version 2.9.4: added the public KaziLaw-referenced landing page, separated `/signin` and `/app`, replaced the sidebar with compact horizontal navigation, removed eyebrow labels and removed the local-preview account path.
+- Version 2.9.4: added the public KaziLaw-referenced landing page, replaced the sidebar with compact horizontal navigation, removed eyebrow labels and removed the local-preview account path.
+- Version 2.9.5: removed the landing-page footer and secondary header links, aligned the two landing information cards side by side at equal height, removed email/password sign-in and opened the app through a silent anonymous Firebase session with a local guest fallback. The legacy `/signin` URL redirects to `/app`.
 
 ## Important limits before production
 
 Vercel's `yul1` setting controls where the FastAPI function executes; it does not prove every downstream processor is in Canada. The Firebase AI Logic model and processing location must be independently confirmed in the client's project. Live Firebase AI Logic, App Check, model-region and end-to-end acceptance tests must be run against staging before production.
 
-Legal Q&A currently covers employment standards and labour legislation only. The source registry includes a principal employment/labour statute for Canada and each province/territory. Municipal registry support exists, but there are no municipal employment-law entries yet. If retrieved text does not support an answer, Mataba withholds an unsupported conclusion. Firebase Authentication and App Check are required for online Q&A.
+Legal Q&A currently covers employment standards and labour legislation only. The source registry includes a principal employment/labour statute for Canada and each province/territory. Municipal registry support exists, but there are no municipal employment-law entries yet. If retrieved text does not support an answer, Mataba withholds an unsupported conclusion. Firebase anonymous authentication and App Check are required for online Q&A.
 
 PDF page references are preserved. DOCX page references are only available where the file contains explicit page-break markers; scanned PDFs are not OCR-processed. The privacy scan is a best-effort safeguard and requires the user's manual review before cloud analysis.

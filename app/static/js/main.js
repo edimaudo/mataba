@@ -1,11 +1,11 @@
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { auth, appCheckConfigured, firebaseConfigured } from './lib/firebase.js';
 import { backendApiBaseUrl, callBackend, getBackendBlockReason } from './lib/backend.js';
 import { extractDocument, validateDocumentFile } from './lib/documents.js';
 import { redactDocument, rehydrateText } from './lib/redaction.js';
 import { deletePiiTokenMap, loadPiiTokenMap, savePiiTokenMap } from './lib/piiVault.js';
 import { answerOfflineQuestion, answerOnlineQuestion, generateContractAnalysis, makeSourcePages } from './lib/ai.js';
-import { createDocumentId, deleteReference, deleteReview, listFolders, listReferences, listReviews, purgeAndDeleteAccount, saveFolder, saveReference, saveReview } from './lib/repository.js';
+import { createDocumentId, deleteReference, deleteReview, listFolders, listReferences, listReviews, saveFolder, saveReference, saveReview } from './lib/repository.js';
 import { translate as t, setDocumentLanguage } from './i18n.js';
 import { CONTRACT_TYPES, supportsHrReport } from './contract-types.js';
 const app = document.querySelector('#app');
@@ -13,7 +13,7 @@ if (!app)
     throw new Error('Mataba application root is missing.');
 const defaultContractType = 'General';
 const state = {
-    user: null, authReady: !auth, authMode: 'signin', authBusy: false, authError: '',
+    user: null, authReady: false,
     language: (localStorage.getItem('mataba-language') === 'fr' ? 'fr' : 'en'),
     theme: (localStorage.getItem('mataba-theme') === 'dark' ? 'dark' : 'light'),
     fontSize: (['small', 'medium', 'large'].includes(localStorage.getItem('mataba-font-size') || '') ? localStorage.getItem('mataba-font-size') : 'medium'),
@@ -42,6 +42,20 @@ const hrStatusLabels = {
 };
 const dateLabel = (stamp) => new Intl.DateTimeFormat(state.language === 'fr' ? 'fr-CA' : 'en-CA', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(stamp));
 const uid = () => crypto.randomUUID();
+function localGuestIdentity() {
+    let localId = '';
+    try {
+        localId = localStorage.getItem('mataba-local-guest-id') || '';
+        if (!localId) {
+            localId = crypto.randomUUID();
+            localStorage.setItem('mataba-local-guest-id', localId);
+        }
+    }
+    catch {
+        localId = crypto.randomUUID();
+    }
+    return { uid: `local-${localId}`, email: '', displayName: 'Mataba' };
+}
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
 const nl2br = (value) => esc(value).replace(/\n/g, '<br>');
 const activeReview = () => state.reviews.find((review) => review.id === state.activeReviewId) || null;
@@ -96,37 +110,6 @@ async function loadUserData() {
     render();
 }
 async function refreshData() { await loadUserData(); }
-async function exitSession() {
-    if (window.location.pathname === '/qa' || window.location.pathname === '/app')
-        history.replaceState({}, '', '/signin');
-    if (auth && state.user)
-        await signOut(auth);
-    state.user = null;
-    state.reviews = [];
-    state.references = [];
-    state.folders = [];
-    state.activeReviewId = null;
-    state.tokenMaps = {};
-    resetDraft();
-    resetReferenceDraft();
-    render();
-}
-function authView() {
-    const fr = state.language === 'fr';
-    const modeLabel = state.authMode === 'signin' ? t(state.language, 'signIn') : t(state.language, 'createAccount');
-    const configMessage = fr
-        ? 'L’authentification n’est pas encore configurée. Ajoutez les paramètres de l’application Web Firebase pour activer la connexion.'
-        : 'Authentication is not configured yet. Add the Firebase web app settings to enable sign-in.';
-    return `<main class="auth-layout auth-clean" id="main-content" tabindex="-1">
-      <section class="auth-form-side"><div class="auth-form-wrap">
-        <a class="auth-wordmark" href="/">mataba</a>
-        <h1>${t(state.language, 'signInTitle')}</h1><p class="muted">${t(state.language, 'signInText')}</p>
-        <div class="auth-language"><button class="language-button" data-action="toggle-language">${state.language.toUpperCase()}</button></div>
-        ${state.authError ? `<div class="notice notice-error" role="alert">${esc(state.authError)}</div>` : ''}
-        ${firebaseConfigured ? `<form data-form="auth" class="stack-form"><label class="field-label">${t(state.language, 'email')}<input name="email" type="email" autocomplete="email" required></label><label class="field-label">${t(state.language, 'password')}<input name="password" type="password" autocomplete="${state.authMode === 'signin' ? 'current-password' : 'new-password'}" minlength="8" required></label><button class="button button-primary full-width" type="submit" ${state.authBusy ? 'disabled' : ''}>${state.authBusy ? '…' : modeLabel}</button></form><button class="text-button" data-action="toggle-auth-mode">${state.authMode === 'signin' ? (fr ? 'Créer un compte' : 'Create an account') : (fr ? 'Déjà un compte? Connexion' : 'Already registered? Sign in')}</button>` : `<p class="auth-config-message" role="status">${configMessage}</p>`}
-        <a class="auth-back-link" href="/">${fr ? 'Retour à Mataba' : 'Back to Mataba'}</a>
-      </div></section></main>`;
-}
 function navItem(id, label, shortIcon) {
     return `<button type="button" class="nav-item ${state.section === id && !state.activeReviewId ? 'active' : ''}" aria-current="${state.section === id && !state.activeReviewId ? 'page' : 'false'}" data-action="navigate" data-section="${id}"><span class="nav-symbol" aria-hidden="true">${shortIcon}</span><span>${t(state.language, label)}</span>${id === 'new' ? '<span class="nav-plus">+</span>' : ''}</button>`;
 }
@@ -140,7 +123,7 @@ function layoutView() {
         <nav class="primary-nav app-primary-nav" aria-label="${state.language === 'fr' ? 'Navigation principale' : 'Main navigation'}">
           ${navItem('recent', 'recent', '')}${navItem('library', 'library', '')}${navItem('new', 'newReview', '')}${navItem('references', 'references', '')}${navItem('legalQa', 'legalQa', '')}
         </nav>
-        <div class="header-controls"><button type="button" class="header-control" data-action="toggle-language">${state.language.toUpperCase()}</button><button type="button" class="header-control" data-action="navigate" data-section="settings">Aa</button><button type="button" class="header-control" data-action="toggle-theme">${state.theme === 'dark' ? (state.language === 'fr' ? 'Mode clair' : 'Light mode') : (state.language === 'fr' ? 'Mode sombre' : 'Dark mode')}</button><button type="button" class="header-control" data-action="sign-out">${t(state.language, 'signOut')}</button></div>
+        <div class="header-controls"><button type="button" class="header-control" data-action="toggle-language">${state.language.toUpperCase()}</button><button type="button" class="header-control" data-action="navigate" data-section="settings">Aa</button><button type="button" class="header-control" data-action="toggle-theme">${state.theme === 'dark' ? (state.language === 'fr' ? 'Mode clair' : 'Light mode') : (state.language === 'fr' ? 'Mode sombre' : 'Dark mode')}</button></div>
       </div></header>
       <main class="main-area" id="main-content" tabindex="-1">
         ${state.notice ? `<div class="notice notice-${state.notice.kind}" role="status" aria-live="polite" aria-atomic="true"><span>${esc(state.notice.text)}</span><button data-action="dismiss-notice" aria-label="${t(state.language, 'close')}">×</button></div>` : ''}
@@ -226,10 +209,9 @@ function referencesView() {
 }
 function settingsView() {
     const blocked = getBackendBlockReason();
-    return `<section class="page-heading"><div><h1>${t(state.language, 'settings')}</h1><p>${state.language === 'fr' ? 'Préférences d’affichage, langue et paramètres du compte.' : 'Display preferences, language and account settings.'}</p></div></section>
+    return `<section class="page-heading"><div><h1>${t(state.language, 'settings')}</h1><p>${state.language === 'fr' ? 'Préférences d’affichage et langue.' : 'Display preferences and language.'}</p></div></section>
     <section class="settings-section"><div class="settings-copy"><h2>${t(state.language, 'appearance')}</h2><p>${state.language === 'fr' ? 'Choisissez le thème et la taille du texte.' : 'Choose your display theme and text size.'}</p></div><div class="settings-controls"><div class="setting-row"><span>${t(state.language, 'appearance')}</span><div class="segmented-control" role="group" aria-label="${t(state.language, 'appearance')}"><button type="button" aria-pressed="${state.theme === 'light'}" data-action="set-theme" data-value="light" class="${state.theme === 'light' ? 'selected' : ''}">${t(state.language, 'light')}</button><button type="button" aria-pressed="${state.theme === 'dark'}" data-action="set-theme" data-value="dark" class="${state.theme === 'dark' ? 'selected' : ''}">${t(state.language, 'dark')}</button></div></div><div class="setting-row"><span>${t(state.language, 'fontSize')}</span><div class="segmented-control" role="group" aria-label="${t(state.language, 'fontSize')}"><button type="button" aria-pressed="${state.fontSize === 'small'}" data-action="set-font" data-value="small" class="${state.fontSize === 'small' ? 'selected' : ''}">${t(state.language, 'small')}</button><button type="button" aria-pressed="${state.fontSize === 'medium'}" data-action="set-font" data-value="medium" class="${state.fontSize === 'medium' ? 'selected' : ''}">${t(state.language, 'medium')}</button><button type="button" aria-pressed="${state.fontSize === 'large'}" data-action="set-font" data-value="large" class="${state.fontSize === 'large' ? 'selected' : ''}">${t(state.language, 'large')}</button></div></div><div class="setting-row"><span>${state.language === 'fr' ? 'Langue' : 'Language'}</span><div class="segmented-control" role="group" aria-label="${state.language === 'fr' ? 'Langue' : 'Language'}"><button type="button" aria-pressed="${state.language === 'en'}" data-action="set-language" data-value="en" class="${state.language === 'en' ? 'selected' : ''}">English</button><button type="button" aria-pressed="${state.language === 'fr'}" data-action="set-language" data-value="fr" class="${state.language === 'fr' ? 'selected' : ''}">Français</button></div></div></div></section>
-    <section class="settings-section"><div class="settings-copy"><h2>${t(state.language, 'account')}</h2><p>${t(state.language, 'signedInAs')} ${esc(state.user?.email || '')}</p></div><div class="settings-controls"><button class="button button-secondary" data-action="sign-out">${t(state.language, 'signOut')}</button>${`<div class="delete-account-area"><p>${t(state.language, 'deleteWarning')}</p><label class="field-label">${t(state.language, 'confirmDelete')}<input id="delete-confirmation" autocomplete="off" required></label><label class="field-label">${t(state.language, 'verifyPassword')}<input id="delete-account-password" type="password" autocomplete="current-password" required></label><button type="button" class="button button-danger" data-action="delete-account">${t(state.language, 'deleteAccount')}</button></div>`}</div></section>
-    <section class="settings-section"><div class="settings-copy"><h2>${state.language === 'fr' ? 'Traitement et résidence des données' : 'AI processing and data residency'}</h2><p>${state.language === 'fr' ? 'L’état de configuration de l’IA et de la protection de l’application.' : 'AI and application-protection configuration status.'}</p></div><div class="settings-controls"><div class="config-status"><span class="status-dot ${firebaseConfigured ? 'green' : 'amber'}"></span><div><strong>Firebase ${firebaseConfigured ? 'configured' : 'not configured'}</strong><small>${firebaseConfigured ? 'Authentication, Firestore and Storage SDK initialized' : 'Add web app settings in app/static/config.js'}</small></div></div><div class="config-status"><span class="status-dot ${appCheckConfigured ? 'green' : 'amber'}"></span><div><strong>App Check ${appCheckConfigured ? 'configured' : 'required'}</strong><small>${appCheckConfigured ? 'reCAPTCHA Enterprise provider initialized' : 'Set recaptchaEnterpriseSiteKey and enforce in Firebase Console'}</small></div></div><div class="config-status"><span class="status-dot amber"></span><div><strong>Python API ${backendApiBaseUrl ? 'configured' : 'not configured'}</strong><small>${esc(blocked || `API endpoint: ${backendApiBaseUrl}`)}</small></div></div></div></section>`;
+    <section class="settings-section"><div class="settings-copy"><h2>${state.language === 'fr' ? 'Traitement et résidence des données' : 'AI processing and data residency'}</h2><p>${state.language === 'fr' ? 'L’état de configuration de l’IA et de la protection de l’application.' : 'AI and application-protection configuration status.'}</p></div><div class="settings-controls"><div class="config-status"><span class="status-dot ${firebaseConfigured ? 'green' : 'amber'}"></span><div><strong>Firebase ${firebaseConfigured ? 'configured' : 'not configured'}</strong><small>${firebaseConfigured ? 'Guest session, Firestore and Storage SDK initialized' : 'Add web app settings in app/static/config.js'}</small></div></div><div class="config-status"><span class="status-dot ${appCheckConfigured ? 'green' : 'amber'}"></span><div><strong>App Check ${appCheckConfigured ? 'configured' : 'required'}</strong><small>${appCheckConfigured ? 'reCAPTCHA Enterprise provider initialized' : 'Set recaptchaEnterpriseSiteKey and enforce in Firebase Console'}</small></div></div><div class="config-status"><span class="status-dot amber"></span><div><strong>Python API ${backendApiBaseUrl ? 'configured' : 'not configured'}</strong><small>${esc(blocked || `API endpoint: ${backendApiBaseUrl}`)}</small></div></div></div></section>`;
 }
 function reportCitation(citation, tokenMap) {
     const label = citation.sourceType === 'CONTRACT' ? t(state.language, 'sourceLabelContract') : t(state.language, 'sourceLabelReference');
@@ -304,7 +286,7 @@ function legalQaView() {
 }
 function render() {
     setPreferences();
-    app.innerHTML = !state.authReady ? `<div class="boot-screen"><span class="brand-mark">m</span><span>Mataba</span></div>` : !state.user ? authView() : layoutView();
+    app.innerHTML = !state.authReady ? `<div class="boot-screen"><span class="brand-mark">m</span><span>Mataba</span></div>` : layoutView();
     app.querySelectorAll('button:not([type])').forEach((button) => { button.type = 'button'; });
     document.body.style.overflow = '';
 }
@@ -511,11 +493,6 @@ async function handleClick(button) {
         render();
         app.querySelector('[data-action="toggle-language"]')?.focus();
     }
-    else if (action === 'toggle-auth-mode') {
-        state.authMode = state.authMode === 'signin' ? 'signup' : 'signin';
-        state.authError = '';
-        render();
-    }
     else if (action === 'navigate') {
         const nextSection = button.dataset.section;
         if (nextSection === 'legalQa' && window.location.pathname !== '/qa')
@@ -552,8 +529,6 @@ async function handleClick(button) {
         render();
         focusMainHeading();
     }
-    else if (action === 'sign-out')
-        await exitSession();
     else if (action === 'open-nav') {
         state.mobileNavOpen = true;
         render();
@@ -669,32 +644,6 @@ async function handleClick(button) {
         render();
         app.querySelector(`[data-action="set-font"][data-value="${state.fontSize}"]`)?.focus();
     }
-    else if (action === 'delete-account') {
-        const value = document.querySelector('#delete-confirmation')?.value;
-        const password = document.querySelector('#delete-account-password')?.value || '';
-        if (value !== 'DELETE') {
-            notice('error', state.language === 'fr' ? 'Tapez DELETE pour confirmer.' : 'Type DELETE to confirm.');
-            return;
-        }
-        if (!password) {
-            notice('error', t(state.language, 'verifyPassword'));
-            return;
-        }
-        if (!confirm(t(state.language, 'deleteConfirm')))
-            return;
-        try {
-            await purgeAndDeleteAccount(state.user.uid, password);
-            state.user = null;
-            state.tokenMaps = {};
-            state.reviews = [];
-            state.references = [];
-            state.folders = [];
-            render();
-        }
-        catch (error) {
-            notice('error', error instanceof Error ? error.message : 'Account deletion failed.');
-        }
-    }
 }
 app.addEventListener('click', (event) => {
     const target = event.target;
@@ -788,9 +737,7 @@ app.addEventListener('submit', (event) => {
         return;
     event.preventDefault();
     const kind = form.dataset.form;
-    if (kind === 'auth')
-        void handleAuth(form);
-    else if (kind === 'reference')
+    if (kind === 'reference')
         void persistReference(form).catch((error) => notice('error', error instanceof Error ? error.message : 'Unable to save reference.'));
     else if (kind === 'folder')
         void createFolderFromForm(form).catch((error) => notice('error', error instanceof Error ? error.message : 'Unable to create folder.'));
@@ -841,55 +788,38 @@ async function askLegalQuestion(form) {
             app.querySelector('#legal-qa-answer-title')?.focus();
     }
 }
-async function handleAuth(form) {
-    if (!auth)
-        return;
-    const data = new FormData(form);
-    const email = String(data.get('email') || '').trim();
-    const password = String(data.get('password') || '');
-    if (!email.includes('@') || password.length < 8) {
-        state.authError = t(state.language, 'passwordRequired');
-        render();
-        return;
-    }
-    state.authBusy = true;
-    state.authError = '';
-    render();
-    try {
-        if (state.authMode === 'signup')
-            await createUserWithEmailAndPassword(auth, email, password);
-        else
-            await signInWithEmailAndPassword(auth, email, password);
-    }
-    catch (error) {
-        state.authError = error instanceof Error ? error.message : 'Authentication failed.';
-    }
-    finally {
-        state.authBusy = false;
-        render();
-    }
-}
 if (auth) {
-    onAuthStateChanged(auth, (user) => {
-        const priorId = state.user?.uid;
-        if (user) {
-            state.user = { uid: user.uid, email: user.email || '', displayName: user.displayName || user.email || 'Mataba user' };
-            if (window.location.pathname === '/signin') history.replaceState({}, '', '/app');
-            if (priorId && priorId !== user.uid)
+    let anonymousSignInStarted = false;
+    onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+            const priorId = state.user?.uid;
+            state.user = { uid: firebaseUser.uid, email: '', displayName: 'Mataba' };
+            if (priorId && priorId !== firebaseUser.uid)
                 state.tokenMaps = {};
+            state.authReady = true;
+            render();
             void loadUserData().catch((error) => notice('error', error instanceof Error ? error.message : 'Unable to load saved data.'));
+            return;
         }
-        else {
-            state.user = null;
-            state.reviews = [];
-            state.references = [];
-            state.folders = [];
-            state.activeReviewId = null;
-            state.tokenMaps = {};
-        }
-        state.authReady = true;
-        render();
+        if (anonymousSignInStarted)
+            return;
+        anonymousSignInStarted = true;
+        void signInAnonymously(auth).catch(async () => {
+            state.user = localGuestIdentity();
+            state.authReady = true;
+            render();
+            await loadUserData().catch((error) => notice('error', error instanceof Error ? error.message : 'Unable to load saved data.'));
+            notice('info', state.language === 'fr'
+                ? 'La session invitée sécurisée est indisponible. Les brouillons sont conservés sur cet appareil; les fonctions infonuagiques ne sont pas disponibles.'
+                : 'A secure guest session is unavailable. Drafts remain on this device; cloud features are unavailable.');
+        });
     });
+}
+else {
+    state.user = localGuestIdentity();
+    state.authReady = true;
+    render();
+    void loadUserData().catch((error) => notice('error', error instanceof Error ? error.message : 'Unable to load saved data.'));
 }
 document.addEventListener('keydown', (event) => {
     const tab = event.target?.closest('[role="tab"][data-action="report-tab"]');

@@ -17,7 +17,8 @@ function omitUndefined(value) {
     return value;
 }
 function isCloudUser(userId) {
-    return firebaseConfigured && Boolean(db) && userId !== 'preview';
+    return firebaseConfigured && Boolean(db) && Boolean(auth?.currentUser)
+        && auth.currentUser.uid === userId && !userId.startsWith('local-') && userId !== 'preview';
 }
 export async function listReviews(userId) {
     if (isCloudUser(userId)) {

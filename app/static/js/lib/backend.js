@@ -4,9 +4,9 @@ import { appCheck, auth, firebaseConfigured, appCheckConfigured, runtimeConfig }
 export const backendApiBaseUrl = (runtimeConfig.backendApiBaseUrl || '').replace(/\/$/, '');
 export function getBackendBlockReason() {
     if (!firebaseConfigured || !auth)
-        return 'Configure Firebase Authentication before using cloud analysis.';
+        return 'Configure Firebase guest authentication before using cloud analysis.';
     if (!auth.currentUser)
-        return 'Sign in with Firebase before using cloud analysis.';
+        return 'A secure Firebase guest session is not available. Enable Anonymous sign-in in Firebase Authentication.';
     if (runtimeConfig.requireAppCheckForApi === true && !appCheckConfigured) {
         return 'Firebase App Check is required. Configure reCAPTCHA Enterprise in app/static/config.js.';
     }
@@ -17,7 +17,7 @@ export async function callBackend(path, payload) {
     if (blocked)
         throw new Error(blocked);
     if (!auth?.currentUser)
-        throw new Error('Sign in with your Firebase account before using cloud analysis.');
+        throw new Error('A secure Firebase guest session is not available. Enable Anonymous sign-in in Firebase Authentication.');
     const idToken = await getIdToken(auth.currentUser, true);
     const headers = {
         'Content-Type': 'application/json',

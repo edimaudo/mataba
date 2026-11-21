@@ -1,6 +1,6 @@
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from pathlib import Path
@@ -25,7 +25,7 @@ STATIC_DIR = APP_DIR / "static"
 
 app = FastAPI(
     title="Mataba",
-    version="2.9.4",
+    version="2.9.5",
     description=(
         "Python FastAPI application serving Mataba's pages, static JavaScript and API routes. "
         "Firebase AI Logic is the cloud inference integration."
@@ -266,10 +266,15 @@ async def landing_page():
 
 
 @app.get("/signin", include_in_schema=False)
+async def legacy_signin_redirect():
+    """Keep old bookmarks working without exposing a sign-in page."""
+    return RedirectResponse(url="/app", status_code=307)
+
+
 @app.get("/app", include_in_schema=False)
 @app.get("/qa", include_in_schema=False)
 async def application_page():
-    """Serve the authenticated application shell from FastAPI."""
+    """Serve the application shell directly; the browser establishes a guest session."""
     index_file = TEMPLATES_DIR / "index.html"
     if not index_file.is_file():
         raise HTTPException(status_code=503, detail="Mataba application template is missing.")

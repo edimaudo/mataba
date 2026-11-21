@@ -74,11 +74,11 @@ async def require_identity(
     app_check_token: str | None = Header(default=None, alias="X-Firebase-AppCheck"),
 ) -> Identity:
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="A valid Firebase sign-in is required.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="A valid Firebase session is required.")
 
     token = authorization[7:].strip()
     if not token or len(token) > 8192:
-        raise HTTPException(status_code=401, detail="Your sign-in token is invalid. Sign in again.")
+        raise HTTPException(status_code=401, detail="Your Firebase session token is invalid. Refresh the app and try again.")
 
     settings = get_settings()
     firebase_admin, auth, app_check, FirebaseError = _firebase_sdk()
@@ -93,13 +93,13 @@ async def require_identity(
         )
     except (ValueError, auth.InvalidIdTokenError, auth.ExpiredIdTokenError,
             auth.RevokedIdTokenError, auth.UserDisabledError) as exc:
-        raise HTTPException(status_code=401, detail="Your sign-in has expired. Sign in again.") from exc
+        raise HTTPException(status_code=401, detail="Your Firebase session has expired. Refresh the app and try again.") from exc
     except FirebaseError as exc:
         raise HTTPException(status_code=503, detail="Firebase authentication could not be verified.") from exc
 
     uid = decoded.get("uid") if isinstance(decoded, dict) else None
     if not isinstance(uid, str) or not uid:
-        raise HTTPException(status_code=401, detail="Your sign-in token is invalid. Sign in again.")
+        raise HTTPException(status_code=401, detail="Your Firebase session token is invalid. Refresh the app and try again.")
 
     if settings.require_app_check:
         if not app_check_token:

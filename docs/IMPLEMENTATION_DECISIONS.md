@@ -1,4 +1,4 @@
-# Mataba implementation decisions — 2.9.4
+# Mataba implementation decisions — 2.9.5
 
 ## Application structure
 
@@ -25,7 +25,7 @@ The browser loads fixed, version-pinned browser libraries from CDN URLs declared
 
 - Firebase AI Logic is the only cloud Gemini integration.
 - FastAPI calls the Firebase AI Logic server prompt-template interface with Google OAuth credentials; no direct Google Gen AI or Vertex AI model SDK is used.
-- Browser Firebase SDK use covers Firebase Auth/App Check, Firestore client access under tenant rules and supported on-device Gemini Nano functionality.
+- Browser Firebase SDK use covers silent anonymous Firebase Auth sessions (no user-facing sign-in), App Check, Firestore client access under tenant rules and supported on-device Gemini Nano functionality. Anonymous sign-in must be enabled in the Firebase project.
 - Service-account credentials are provided through the server environment and never placed in `app/static/config.js`.
 
 ## Phase requirements preserved
@@ -34,12 +34,19 @@ The browser loads fixed, version-pinned browser libraries from CDN URLs declared
 - Phase 2: browser PDF/DOCX/TXT extraction, local PII detection/redaction, encrypted IndexedDB PII vault and evidence metadata.
 - Phase 3: contract analysis, source citation verification, lawyer-style report and gated HR sections.
 - Phase 4: excluded as requested.
-- Phase 5: Firebase ID token/App Check checks, request-size and rate limits, residual-PII guard, tenant rules and account deletion sequence.
+- Phase 5: Firebase ID token/App Check checks, request-size and rate limits, residual-PII guard and tenant rules.
 - Phase 6: EN/FR UI, keyboard/focus behavior, responsive navigation, themes, font scaling and accessibility behavior.
+
+## Entry and guest-session behavior
+
+- `/` serves the public landing page; its main action opens `/app` directly.
+- `/signin` redirects to `/app` for legacy bookmarks. No email/password sign-in or account controls are presented.
+- With Firebase configured, the browser silently provisions an anonymous guest session for verified API requests and tenant-scoped cloud persistence.
+- Without Firebase configured, the app uses a stable local guest identity for IndexedDB records. Cloud API features remain unavailable until Firebase and App Check are configured.
 
 ## Legal Q&A scope
 
-- `/qa` is independent of contract upload and requires Firebase Authentication/App Check.
+- `/qa` is independent of contract upload and requires a Firebase anonymous guest session and App Check.
 - Employment law is the only current law type.
 - Jurisdictions include federal, provincial/territorial and municipal. Municipal questions capture the municipality and parent jurisdiction.
 - `MUNICIPAL_LAW_SOURCES` is an allowlisted registry keyed by parent jurisdiction, municipality and law type. Only registered official source URLs can be fetched.

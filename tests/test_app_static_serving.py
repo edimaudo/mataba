@@ -24,14 +24,15 @@ def test_fastapi_serves_html_and_native_javascript_directly(monkeypatch, tmp_pat
     with TestClient(main.app) as client:
         root = client.get("/")
         application = client.get("/app")
-        signin = client.get("/signin")
+        signin = client.get("/signin", follow_redirects=False)
         asset = client.get("/main.js")
 
     assert root.status_code == 200
     assert "Mataba" in root.text
     assert root.headers["content-type"].startswith("text/html")
     assert application.status_code == 200
-    assert signin.status_code == 200
+    assert signin.status_code == 307
+    assert signin.headers["location"] == "/app"
     assert asset.status_code == 200
     assert "console.log" in asset.text
     assert "javascript" in asset.headers["content-type"]
@@ -132,7 +133,10 @@ def test_fastapi_serves_html_css_javascript_and_runtime_config_from_app_package(
     assert page.status_code == 200
     assert 'type="module" src="/js/main.js"' in page.text
     assert landing.status_code == 200
-    assert 'href="/signin"' in landing.text
+    assert 'href="/app"' in landing.text
+    assert "How it works" not in landing.text
+    assert "Legal coverage</a>" not in landing.text
+    assert "<footer" not in landing.text
     assert stylesheet.status_code == 200
     assert stylesheet.headers["content-type"].startswith("text/css")
     assert script.status_code == 200
@@ -143,16 +147,24 @@ def test_fastapi_serves_html_css_javascript_and_runtime_config_from_app_package(
     assert (root / "app" / "static" / "js" / "main.js").is_file()
 
 
-def test_public_landing_page_is_separate_from_authenticated_application():
+def test_public_landing_and_direct_application_entry_have_no_signin_screen():
     root = Path(__file__).resolve().parents[1]
     with TestClient(main.app) as client:
         landing = client.get("/")
-        signin = client.get("/signin")
+        signin = client.get("/signin", follow_redirects=False)
         application = client.get("/app")
     assert "Understand your employment contract before you sign." in landing.text
-    assert 'href="/signin"' in landing.text
+    assert 'href="/app"' in landing.text
+    assert "How it works" not in landing.text
+    assert "Legal coverage</a>" not in landing.text
+    assert "Review the terms that matter." in landing.text
+    assert "Canadian legal coverage" in landing.text
+    assert 'class="landing-cards"' in landing.text
+    assert 'class="landing-card"' in landing.text
+    assert "<footer" not in landing.text
+    assert signin.status_code == 307
+    assert signin.headers["location"] == "/app"
     assert 'type="module" src="/js/main.js"' not in landing.text
-    assert 'type="module" src="/js/main.js"' in signin.text
     assert 'type="module" src="/js/main.js"' in application.text
     script = (root / "app" / "static" / "js" / "main.js").read_text(encoding="utf-8")
     assert 'data-action="preview"' not in script
@@ -160,3 +172,20 @@ def test_public_landing_page_is_separate_from_authenticated_application():
     assert 'localPreviewText' not in script
     assert 'class="eyebrow"' not in script
     assert 'class="eyebrow"' not in (root / "app" / "templates" / "landing.html").read_text(encoding="utf-8")
+    assert "authView()" not in script
+    assert "signInAnonymously(auth)" in script
+    assert "localGuestIdentity()" in script
+
+
+def test_guest_local_fallback_never_writes_to_firestore_without_matching_firebase_user():
+    root = Path(__file__).resolve().parents[1]
+    repository = (root / "app" / "static" / "js" / "lib" / "repository.js").read_text(encoding="utf-8")
+    assert "auth.currentUser.uid === userId" in repository
+    assert "!userId.startsWith('local-')" in repository
+
+def test_landing_information_cards_are_equal_height_and_responsive():
+    root = Path(__file__).resolve().parents[1]
+    stylesheet = (root / "app" / "static" / "css" / "styles.css").read_text(encoding="utf-8")
+    assert ".landing-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));" in stylesheet
+    assert ".landing-card { box-sizing: border-box; display: flex; flex-direction: column; min-height: 205px; height: 100%;" in stylesheet
+    assert ".landing-cards { grid-template-columns: 1fr;" in stylesheet
