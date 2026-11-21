@@ -49,9 +49,9 @@ def test_report_tabs_have_required_roles_and_keyboard_navigation():
 
 
 def test_theme_and_font_scales_match_product_requirement():
-    assert 'html[data-font-size="small"] { font-size: .75em; }' in CSS
-    assert 'html[data-font-size="medium"] { font-size: 1em; }' in CSS
-    assert 'html[data-font-size="large"] { font-size: 1.25em; }' in CSS
+    assert 'html[data-font-size="small"] { font-size: .85em; }' in CSS
+    assert 'html[data-font-size="medium"] { font-size: 1.25em; }' in CSS
+    assert 'html[data-font-size="large"] { font-size: 1.5em; }' in CSS
     assert 'html[data-theme="dark"]' in CSS
 
 
@@ -156,8 +156,8 @@ def test_revised_light_and_dark_palette_preserves_wcag_aa_text_contrast():
 
     assert ratio("#596570", "#ffffff") >= 4.5
     assert ratio("#65717a", "#ffffff") >= 4.5
-    assert ratio("#b2bbc1", "#20272c") >= 4.5
-    assert ratio("#8e9aa3", "#20272c") >= 4.5
+    assert ratio("#c0c4c5", "#202629") >= 4.5
+    assert ratio("#a8afb2", "#202629") >= 4.5
 
 
 def test_inter_is_loaded_and_applied_to_all_form_controls():
@@ -166,21 +166,56 @@ def test_inter_is_loaded_and_applied_to_all_form_controls():
     assert 'html, body, button, input, select, textarea {' in CSS
 
 def test_medium_font_scale_remains_exactly_one_em():
-    assert 'html[data-font-size="medium"] { font-size: 1em; }' in CSS
+    assert 'html[data-font-size="medium"] { font-size: 1.25em; }' in CSS
 
 def test_dark_mode_uses_neutral_highlights_and_accessible_focus_ring():
-    assert '--focus-ring: #e0c58c;' in CSS
-    assert '--accent-soft: #34312a;' in CSS
-    assert 'background: #30373c !important;' in CSS
-    assert 'outline: 3px solid var(--focus-ring) !important;' in CSS
+    final_theme = CSS.split("/* Mataba 2.9.8:", 1)[1]
+    assert '--focus-ring: #f0d79c;' in final_theme
+    assert '--accent-soft: #38342b;' in final_theme
+    assert 'background: var(--dark-neutral-surface) !important;' in final_theme
+    assert 'outline: 3px solid var(--focus-ring) !important;' in final_theme
 
 def test_focus_and_accent_tokens_meet_wcag_aa_contrast():
-    refinement = CSS.split("/* Accessibility and theme refinement", 1)[1]
-    root_block = refinement.split(":root", 1)[1].split("}", 1)[0]
-    dark_theme = refinement.split('html[data-theme="dark"]', 1)[1].split("}", 1)[0]
+    final_theme = CSS.split("/* Mataba 2.9.8:", 1)[1]
+    root_block = final_theme.split(":root", 1)[1].split("}", 1)[0]
+    dark_theme = final_theme.split('html[data-theme="dark"]', 1)[1].split("}", 1)[0]
     light = css_vars(root_block)
     dark = css_vars(dark_theme)
     assert contrast_ratio(light["--focus-ring"], "#ffffff") >= 3.0
-    assert contrast_ratio(dark["--focus-ring"], "#20272c") >= 3.0
-    assert contrast_ratio("#b2bbc1", "#20272c") >= 4.5
-    assert contrast_ratio("#8e9aa3", "#20272c") >= 4.5
+    assert contrast_ratio(dark["--focus-ring"], "#202629") >= 3.0
+    assert contrast_ratio(dark["--muted"], dark["--surface"]) >= 4.5
+    assert contrast_ratio(dark["--faint"], dark["--surface"]) >= 4.5
+
+
+def test_final_dark_mode_override_covers_blue_tinted_component_surfaces():
+    final_theme = CSS.split("/* Mataba 2.9.8:", 1)[1]
+    for selector in (
+        "html[data-theme=\"dark\"] .notice-info",
+        "html[data-theme=\"dark\"] .drop-zone:hover",
+        "html[data-theme=\"dark\"] .upload-zone:hover",
+        "html[data-theme=\"dark\"] .segmented-control button.selected",
+        "html[data-theme=\"dark\"] .source-tag.cloud",
+        "html[data-theme=\"dark\"] .summary-icon",
+        "html[data-theme=\"dark\"] .qa-icon",
+        "html[data-theme=\"dark\"] .legal-citation blockquote",
+        "html[data-theme=\"dark\"] #main-content h1:focus",
+    ):
+        assert selector in final_theme
+    assert "--dark-neutral-surface: #2d3336;" in final_theme
+    assert "--dark-neutral-hover: #343b3e;" in final_theme
+    assert "background: var(--dark-neutral-surface) !important;" in final_theme
+    assert "background: var(--dark-neutral-hover) !important;" in final_theme
+    assert "accent-color: var(--accent);" in final_theme
+    assert "html[data-theme=\"dark\"] ::selection" in final_theme
+
+
+def test_font_scale_is_consistent_at_initial_and_final_stylesheet_rules():
+    assert CSS.count('html[data-font-size="small"] { font-size: .85em; }') >= 2
+    assert CSS.count('html[data-font-size="medium"] { font-size: 1.25em; }') >= 2
+    assert CSS.count('html[data-font-size="large"] { font-size: 1.5em; }') >= 2
+
+
+def test_stylesheet_cache_version_is_updated_on_app_and_landing_pages():
+    landing = (ROOT / "app" / "templates" / "landing.html").read_text(encoding="utf-8")
+    assert "/css/styles.css?v=2.9.8" in HTML
+    assert "/css/styles.css?v=2.9.8" in landing

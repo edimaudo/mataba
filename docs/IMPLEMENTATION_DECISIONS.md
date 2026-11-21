@@ -1,4 +1,4 @@
-# Mataba implementation decisions — 2.9.7
+# Mataba implementation decisions — 2.9.8
 
 ## Application structure
 

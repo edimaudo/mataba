@@ -13,7 +13,7 @@ import httpx
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE_URL = os.getenv("MATAB_TEST_URL", "http://127.0.0.1:8093")
+BASE_URL = os.getenv("MATAB_TEST_URL", "http://127.0.0.1:8080")
 AXE_SCRIPT_URL = "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.3/axe.min.js"
 
 
@@ -114,8 +114,14 @@ def main() -> int:
             page.locator("[data-action='set-theme'][data-value='dark']").click()
             record("Dark theme updates document state", page.locator("html").get_attribute("data-theme") == "dark")
             record("Theme control retains keyboard focus", page.evaluate("document.activeElement?.getAttribute('data-value') === 'dark'"))
+            selected_background = page.locator("[data-action='set-theme'][data-value='dark']").evaluate("element => getComputedStyle(element).backgroundColor")
+            record("Dark selected setting uses a neutral, non-blue surface", page.evaluate("value => { const m = value.match(/[0-9.]+/g).map(Number); return m.length >= 3 && m[2] <= m[0] + 3; }", selected_background), selected_background)
+            page.locator(".app-primary-nav [data-section='new']").click()
+            upload_background = page.locator(".upload-zone").evaluate("element => getComputedStyle(element).backgroundColor")
+            record("Dark upload zone uses a neutral charcoal surface", page.evaluate("value => { const m = value.match(/[0-9.]+/g).map(Number); return m.length >= 3 && m[2] <= m[0] + 3; }", upload_background), upload_background)
+            page.locator(".app-primary-nav [data-section='settings']").click()
             page.locator("[data-action='set-font'][data-value='large']").click()
-            record("Large typography sets 1.25em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "20px")
+            record("Large typography sets 1.5em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "24px")
             record("Font control retains keyboard focus", page.evaluate("document.activeElement?.getAttribute('data-value') === 'large'"))
             page.locator("[data-action='set-language'][data-value='fr']").click()
             record("French selection updates document language", page.locator("html").get_attribute("lang") == "fr-CA")
@@ -125,9 +131,9 @@ def main() -> int:
             axe_scan("French settings, dark theme and large typography")
 
             page.locator("[data-action='set-font'][data-value='small']").click()
-            record("Small typography sets 0.75em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "12px")
+            record("Small typography sets 0.85em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "13.6px")
             page.locator("[data-action='set-font'][data-value='medium']").click()
-            record("Medium typography sets 1em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "16px")
+            record("Medium typography sets 1.25em root scale", page.locator("html").evaluate("element => getComputedStyle(element).fontSize") == "20px")
             page.locator("[data-action='set-theme'][data-value='light']").click()
             record("Light theme restores document state", page.locator("html").get_attribute("data-theme") == "light")
             axe_scan("French settings, light theme and medium typography")
