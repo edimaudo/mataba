@@ -913,54 +913,84 @@ html[data-theme="dark"] .button-primary { background: #9ab6c7; border-color: #9a
   .app-primary-nav .nav-item { font-size: .72rem; }
 }
 
-/* Accessibility and theme refinement — Mataba 2.9.7 */
+/* Mataba 2.9.9: neutral themes, pointer-safe focus, and exact typography scale. */
 :root {
-  --focus-ring: #775b2c;
-  --accent: #705321;
-  --accent-soft: #f3eee4;
+  color-scheme: light;
+  --focus-ring: #35434c;
+  --accent: #46545d;
+  --accent-soft: #edf0f2;
   --control-border: #737f89;
+  --dark-neutral-surface: #f3f5f6;
+  --dark-neutral-hover: #e9edef;
+  --dark-neutral-border: #cbd2d6;
+  --dark-neutral-text: #26323a;
 }
 html[data-theme="dark"] {
-  --focus-ring: #e0c58c;
-  --accent: #e0c58c;
-  --accent-soft: #34312a;
-  --control-border: #78838c;
-  --blue: #c3cbd0;
-  --blue-2: #30373c;
+  color-scheme: dark;
+  --text: #f0f1f2;
+  --muted: #c0c7cc;
+  --faint: #a8b2b8;
+  --border: #454d52;
+  --surface: #202629;
+  --surface-2: #282f33;
+  --canvas: #171c1f;
+  --blue: #cbd2d6;
+  --blue-2: #30383d;
+  --focus-ring: #d8dfe2;
+  --accent: #d1d8db;
+  --accent-soft: #30383d;
+  --control-border: #7b858b;
+  --dark-neutral-surface: #2c3337;
+  --dark-neutral-hover: #353d41;
+  --dark-neutral-border: #596268;
+  --dark-neutral-text: #e8ecee;
 }
-html, body, button, input, select, textarea {
-  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+
+/* Font sizing is relative to the root and applies to the complete interface. */
 html { font-size: 1em; }
 html[data-font-size="small"] { font-size: .85em; }
 html[data-font-size="medium"] { font-size: 1.25em; }
 html[data-font-size="large"] { font-size: 1.5em; }
+html, body, button, input, select, textarea {
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* A focus ring is shown only for keyboard-style focus, and it is neutral. */
 :focus-visible {
-  outline: 3px solid var(--focus-ring) !important;
-  outline-offset: 3px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
   box-shadow: none !important;
 }
-#main-content:focus { outline: 3px solid var(--focus-ring) !important; outline-offset: -3px; }
-.field-label input, .field-label select, .field-label textarea,
-.paste-contract-label textarea, .manual-redaction-row input,
-.top-search input, input[type="file"] {
-  font-family: inherit;
+:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
-.field-label input, .field-label select, .field-label textarea,
-.paste-contract-label textarea, .manual-redaction-row input {
-  border-color: var(--control-border);
+#main-content:focus,
+#main-content h1:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
-.field-label input:focus, .field-label select:focus,
-.field-label textarea:focus, .paste-contract-label textarea:focus,
-.manual-redaction-row input:focus {
+.field-label input:focus:not(:focus-visible),
+.field-label select:focus:not(:focus-visible),
+.field-label textarea:focus:not(:focus-visible),
+.paste-contract-label textarea:focus:not(:focus-visible),
+.manual-redaction-row input:focus:not(:focus-visible) {
+  border-color: var(--control-border) !important;
+}
+.field-label input:focus-visible,
+.field-label select:focus-visible,
+.field-label textarea:focus-visible,
+.paste-contract-label textarea:focus-visible,
+.manual-redaction-row input:focus-visible {
   border-color: var(--focus-ring) !important;
   outline: 2px solid var(--focus-ring) !important;
-  outline-offset: 1px;
-  box-shadow: none !important;
+  outline-offset: 2px;
 }
+
+/* Remove the gold accent treatment from navigation and selected controls. */
 .app-primary-nav .nav-item.active {
   color: var(--text);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--accent) !important;
   background: transparent !important;
   box-shadow: none !important;
 }
@@ -970,134 +1000,40 @@ html[data-font-size="large"] { font-size: 1.5em; }
 .report-tabs button.active {
   color: var(--text) !important;
   background: var(--accent-soft) !important;
-  border-color: var(--accent) !important;
+  border-color: var(--control-border) !important;
   box-shadow: none !important;
 }
 .button-tertiary {
   color: var(--accent);
   background: var(--accent-soft);
-  border-color: var(--accent);
-}
-html[data-theme="dark"] .button-tertiary,
-html[data-theme="dark"] .button-secondary,
-html[data-theme="dark"] .button-primary {
+  border-color: var(--control-border);
   box-shadow: none !important;
 }
+
+/* Dark mode uses neutral graphite surfaces instead of blue or yellow fills. */
+html[data-theme="dark"] body { background: var(--canvas); color: var(--text); }
 html[data-theme="dark"] .button-primary {
-  background: #d8c18f;
-  border-color: #d8c18f;
-  color: #24221d;
+  color: #1c2428 !important;
+  background: #d1d8db !important;
+  border-color: #d1d8db !important;
+  box-shadow: none !important;
 }
 html[data-theme="dark"] .button-primary:hover:not(:disabled) {
-  background: #ead7ad;
-  border-color: #ead7ad;
+  color: #151c20 !important;
+  background: #e2e7e9 !important;
+  border-color: #e2e7e9 !important;
 }
-html[data-theme="dark"] .notice-info,
-html[data-theme="dark"] .stat-icon.blue,
-html[data-theme="dark"] .file-icon,
-html[data-theme="dark"] .bottom-guidance,
-html[data-theme="dark"] .drop-zone.has-file,
-html[data-theme="dark"] .drop-icon,
-html[data-theme="dark"] .mini-file,
-html[data-theme="dark"] .source-tag.cloud,
-html[data-theme="dark"] .source-badge.contract,
-html[data-theme="dark"] .source-blue,
-html[data-theme="dark"] .auth-preview-block,
-html[data-theme="dark"] .panel-step > span,
-html[data-theme="dark"] .finding-category {
+html[data-theme="dark"] .button-secondary,
+html[data-theme="dark"] .button-tertiary {
   color: var(--text) !important;
-  background: #30373c !important;
-  border-color: #59636b !important;
+  background: var(--surface-2) !important;
+  border-color: var(--dark-neutral-border) !important;
 }
-html[data-theme="dark"] .drop-zone:hover,
-html[data-theme="dark"] .review-row:hover,
-html[data-theme="dark"] .library-card:hover,
-html[data-theme="dark"] .reference-select:hover,
-html[data-theme="dark"] .folder-tabs button:hover {
-  background: #293136 !important;
-  border-color: #78838c !important;
+html[data-theme="dark"] .button-secondary:hover:not(:disabled),
+html[data-theme="dark"] .button-tertiary:hover:not(:disabled) {
+  background: var(--dark-neutral-hover) !important;
+  border-color: var(--control-border) !important;
 }
-html[data-theme="dark"] .field-label input,
-html[data-theme="dark"] .field-label select,
-html[data-theme="dark"] .field-label textarea,
-html[data-theme="dark"] .paste-contract-label textarea,
-html[data-theme="dark"] .manual-redaction-row input,
-html[data-theme="dark"] .upload-zone,
-html[data-theme="dark"] .drop-zone {
-  background: #20272c;
-  color: #e7eaec;
-  border-color: #78838c;
-}
-html[data-theme="dark"] .field-label input::placeholder,
-html[data-theme="dark"] .field-label textarea::placeholder,
-html[data-theme="dark"] .paste-contract-label textarea::placeholder {
-  color: #b2bbc1;
-  opacity: 1;
-}
-html[data-theme="dark"] .status-pill,
-html[data-theme="dark"] .status-pill.analyzed,
-html[data-theme="dark"] .status-pill.draft,
-html[data-theme="dark"] .scan-local,
-html[data-theme="dark"] .scan-manual,
-html[data-theme="dark"] .source-tag.local,
-html[data-theme="dark"] .source-badge.reference,
-html[data-theme="dark"] .source-amber {
-  background: #343a3e !important;
-  color: #e7eaec !important;
-  border-color: #59636b !important;
-}
-html[data-theme="dark"] .inline-warning,
-html[data-theme="dark"] .inline-error,
-html[data-theme="dark"] .notice-success,
-html[data-theme="dark"] .notice-error {
-  border-width: 1px;
-}
-html[data-theme="dark"] .verified-check { color: #9ed9b9 !important; }
-html[data-theme="dark"] .finding-category,
-html[data-theme="dark"] .text-button,
-html[data-theme="dark"] .file-change,
-html[data-theme="dark"] .drop-copy em { color: #e0c58c !important; }
-
-
-/* Mataba 2.9.8: final dark-surface and type-scale contract.
-   This block intentionally comes last so legacy component declarations cannot
-   reintroduce blue-tinted fills or hover/selected states in dark mode. */
-:root {
-  --focus-ring: #775b2c;
-  --accent: #705321;
-  --accent-soft: #f3eee4;
-  --control-border: #737f89;
-}
-html[data-theme="dark"] {
-  --text: #f0f0ed;
-  --muted: #c0c4c5;
-  --faint: #a8afb2;
-  --border: #454c50;
-  --surface: #202629;
-  --surface-2: #292f32;
-  --canvas: #171c1f;
-  --blue: #d2d0ca;
-  --blue-2: #303639;
-  --focus-ring: #f0d79c;
-  --accent: #e5ca91;
-  --accent-soft: #38342b;
-  --control-border: #858d90;
-  --dark-neutral-surface: #2d3336;
-  --dark-neutral-hover: #343b3e;
-  --dark-neutral-border: #596267;
-  --dark-neutral-text: #e8e8e3;
-}
-
-/* Keep the requested font scale exact and global. */
-html { font-size: 1em; }
-html[data-font-size="small"] { font-size: .85em; }
-html[data-font-size="medium"] { font-size: 1.25em; }
-html[data-font-size="large"] { font-size: 1.5em; }
-html, body, button, input, select, textarea {
-  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-/* Neutralize all blue-tinted icon, badge, upload and information surfaces. */
 html[data-theme="dark"] .notice-info,
 html[data-theme="dark"] .stat-icon.blue,
 html[data-theme="dark"] .stat-icon.violet,
@@ -1108,8 +1044,11 @@ html[data-theme="dark"] .drop-zone.has-file,
 html[data-theme="dark"] .drop-icon,
 html[data-theme="dark"] .mini-file,
 html[data-theme="dark"] .source-tag.cloud,
+html[data-theme="dark"] .source-tag.local,
 html[data-theme="dark"] .source-badge.contract,
+html[data-theme="dark"] .source-badge.reference,
 html[data-theme="dark"] .source-blue,
+html[data-theme="dark"] .source-amber,
 html[data-theme="dark"] .panel-step > span,
 html[data-theme="dark"] .summary-icon,
 html[data-theme="dark"] .qa-icon,
@@ -1118,33 +1057,28 @@ html[data-theme="dark"] .upload-symbol,
 html[data-theme="dark"] .privacy-symbol,
 html[data-theme="dark"] .empty-icon,
 html[data-theme="dark"] .empty-symbol,
-html[data-theme="dark"] .manual-value-list span {
+html[data-theme="dark"] .manual-value-list span,
+html[data-theme="dark"] .status-pill,
+html[data-theme="dark"] .status-pill.analyzed,
+html[data-theme="dark"] .status-pill.draft,
+html[data-theme="dark"] .scan-local,
+html[data-theme="dark"] .scan-manual,
+html[data-theme="dark"] .amber-mark {
   color: var(--dark-neutral-text) !important;
   background: var(--dark-neutral-surface) !important;
   border-color: var(--dark-neutral-border) !important;
   box-shadow: none !important;
 }
-
-/* Selected and hovered controls use neutral charcoal / muted bronze only. */
-html[data-theme="dark"] .segmented-control button.selected,
-html[data-theme="dark"] .contract-input-tabs button.active,
-html[data-theme="dark"] .folder-tabs button.selected,
-html[data-theme="dark"] .report-tabs button.active {
-  color: #f2e8d2 !important;
-  background: var(--accent-soft) !important;
-  border-color: var(--accent) !important;
-  box-shadow: none !important;
-}
 html[data-theme="dark"] .drop-zone:hover,
 html[data-theme="dark"] .upload-zone:hover,
 html[data-theme="dark"] .review-row:hover,
+html[data-theme="dark"] .review-row-main:hover,
 html[data-theme="dark"] .library-card:hover,
 html[data-theme="dark"] .reference-select:hover,
 html[data-theme="dark"] .folder-tabs button:hover,
 html[data-theme="dark"] .segmented-control button:hover,
 html[data-theme="dark"] .contract-input-tabs button:hover,
 html[data-theme="dark"] .report-tabs button:hover,
-html[data-theme="dark"] .button-tertiary:hover:not(:disabled),
 html[data-theme="dark"] .nav-item:hover {
   color: var(--text);
   background: var(--dark-neutral-hover) !important;
@@ -1156,11 +1090,6 @@ html[data-theme="dark"] .app-primary-nav .nav-item.active {
   background: transparent !important;
   box-shadow: none !important;
 }
-html[data-theme="dark"] .app-primary-nav .nav-item.active {
-  border-bottom-color: var(--accent) !important;
-}
-
-/* Preserve neutral form surfaces and make native controls use the warm accent. */
 html[data-theme="dark"] .field-label input,
 html[data-theme="dark"] .field-label select,
 html[data-theme="dark"] .field-label textarea,
@@ -1173,47 +1102,42 @@ html[data-theme="dark"] .drop-zone {
   border-color: var(--control-border) !important;
   box-shadow: none !important;
 }
-html[data-theme="dark"] .field-label input:focus,
-html[data-theme="dark"] .field-label select:focus,
-html[data-theme="dark"] .field-label textarea:focus,
-html[data-theme="dark"] .paste-contract-label textarea:focus,
-html[data-theme="dark"] .manual-redaction-row input:focus,
-html[data-theme="dark"] .upload-zone:focus-within,
-html[data-theme="dark"] .drop-zone:focus-within {
-  border-color: var(--focus-ring) !important;
-  outline-color: var(--focus-ring) !important;
-  box-shadow: none !important;
+html[data-theme="dark"] .field-label input::placeholder,
+html[data-theme="dark"] .field-label textarea::placeholder,
+html[data-theme="dark"] .paste-contract-label textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
-html[data-theme="dark"] input[type="checkbox"],
-html[data-theme="dark"] input[type="radio"] {
-  accent-color: var(--accent);
+html[data-theme="dark"] .inline-warning,
+html[data-theme="dark"] .inline-error,
+html[data-theme="dark"] .notice-success,
+html[data-theme="dark"] .notice-error {
+  color: var(--text) !important;
+  background: var(--surface-2) !important;
+  border-color: var(--dark-neutral-border) !important;
 }
 html[data-theme="dark"] .finding-category,
 html[data-theme="dark"] .text-button,
 html[data-theme="dark"] .file-change,
-html[data-theme="dark"] .drop-copy em {
-  color: #e5ca91 !important;
+html[data-theme="dark"] .drop-copy em,
+html[data-theme="dark"] .verified-check {
+  color: var(--accent) !important;
 }
+html[data-theme="dark"] input[type="checkbox"],
+html[data-theme="dark"] input[type="radio"] { accent-color: var(--accent); }
 html[data-theme="dark"] .finding-detail blockquote,
 html[data-theme="dark"] .citation blockquote,
 html[data-theme="dark"] .legal-citation blockquote {
   border-left-color: var(--dark-neutral-border) !important;
 }
-html[data-theme="dark"] #main-content h1:focus,
-html[data-theme="dark"] .contract-input-tabs button:focus-visible,
-html[data-theme="dark"] .paste-contract-label textarea:focus-visible {
-  outline: 3px solid var(--focus-ring) !important;
-  outline-offset: 3px;
-}
-html[data-theme="dark"] .text-preview.sanitized {
-  border-color: var(--dark-neutral-border) !important;
-}
+html[data-theme="dark"] .text-preview.sanitized,
 html[data-theme="dark"] .document-heading {
-  background: #343b3e !important;
+  border-color: var(--dark-neutral-border) !important;
+  background: var(--dark-neutral-surface) !important;
 }
 html[data-theme="dark"] ::selection {
-  color: #f7f2e7;
-  background: #635638;
+  color: var(--text);
+  background: #48545a;
 }
 html[data-theme="dark"] input:-webkit-autofill,
 html[data-theme="dark"] textarea:-webkit-autofill,
@@ -1221,13 +1145,4 @@ html[data-theme="dark"] select:-webkit-autofill {
   -webkit-text-fill-color: var(--text);
   -webkit-box-shadow: 0 0 0 1000px #202629 inset;
   caret-color: var(--text);
-}
-:focus-visible {
-  outline: 3px solid var(--focus-ring) !important;
-  outline-offset: 3px;
-  box-shadow: none !important;
-}
-#main-content:focus {
-  outline: 3px solid var(--focus-ring) !important;
-  outline-offset: -3px;
 }

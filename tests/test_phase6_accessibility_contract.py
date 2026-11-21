@@ -67,8 +67,9 @@ def test_normal_text_palette_meets_wcag_aa_contrast_in_light_and_dark_themes():
 
 
 def test_visible_focus_and_reduced_motion_preferences_are_supported():
-    assert ':focus-visible { outline: 3px solid' in CSS
-    assert '#main-content:focus { outline: 3px solid' in CSS
+    assert ':focus-visible {\n  outline: 2px solid var(--focus-ring);' in CSS
+    assert ':focus:not(:focus-visible)' in CSS
+    assert '#main-content:focus,' in CSS
     assert '@media (prefers-reduced-motion: reduce)' in CSS
 
 
@@ -83,8 +84,9 @@ def test_dark_theme_accent_text_uses_light_contrast_tokens():
     assert contrast_ratio(dark["--blue"], dark["--surface"]) >= 4.5
     assert contrast_ratio(dark["--muted"], dark["--surface"]) >= 4.5
     assert contrast_ratio(dark["--faint"], dark["--surface"]) >= 4.5
-    assert 'html[data-theme="dark"] .finding-category { color: #a6c7ff; }' in CSS
-    assert 'html[data-theme="dark"] .verified-check { color: #8fe1bf; }' in CSS
+    final_theme = CSS.split('/* Mataba 2.9.9:', 1)[1]
+    assert 'html[data-theme="dark"] .finding-category' in final_theme
+    assert 'color: var(--accent) !important;' in final_theme
 
 
 def test_report_tabpanel_is_focusable_for_keyboard_users():
@@ -142,7 +144,9 @@ def test_settings_controls_are_available_in_settings_section_and_persist_prefere
 
 
 def test_navigation_active_state_has_no_blue_vertical_marker():
-    assert '.app-primary-nav .nav-item.active { color: var(--text); border-bottom: 2px solid #a88b5a; background: transparent; box-shadow: none !important;' in CSS
+    final_theme = CSS.split('/* Mataba 2.9.9:', 1)[1]
+    assert '.app-primary-nav .nav-item.active {' in final_theme
+    assert 'border-bottom-color: var(--accent) !important;' in final_theme
 
 
 def test_revised_light_and_dark_palette_preserves_wcag_aa_text_contrast():
@@ -165,18 +169,20 @@ def test_inter_is_loaded_and_applied_to_all_form_controls():
     assert 'font-family: "Inter", ui-sans-serif' in CSS
     assert 'html, body, button, input, select, textarea {' in CSS
 
-def test_medium_font_scale_remains_exactly_one_em():
+def test_medium_font_scale_is_exactly_one_point_two_five_em():
     assert 'html[data-font-size="medium"] { font-size: 1.25em; }' in CSS
 
 def test_dark_mode_uses_neutral_highlights_and_accessible_focus_ring():
-    final_theme = CSS.split("/* Mataba 2.9.8:", 1)[1]
-    assert '--focus-ring: #f0d79c;' in final_theme
-    assert '--accent-soft: #38342b;' in final_theme
+    final_theme = CSS.split("/* Mataba 2.9.9:", 1)[1]
+    assert '--focus-ring: #d8dfe2;' in final_theme
+    assert '--accent-soft: #30383d;' in final_theme
     assert 'background: var(--dark-neutral-surface) !important;' in final_theme
-    assert 'outline: 3px solid var(--focus-ring) !important;' in final_theme
+    assert ':focus:not(:focus-visible)' in final_theme
+    assert '#f0d79c' not in final_theme and '#e5ca91' not in final_theme
+    assert '#d8c18f' not in final_theme and '#ead7ad' not in final_theme
 
 def test_focus_and_accent_tokens_meet_wcag_aa_contrast():
-    final_theme = CSS.split("/* Mataba 2.9.8:", 1)[1]
+    final_theme = CSS.split("/* Mataba 2.9.9:", 1)[1]
     root_block = final_theme.split(":root", 1)[1].split("}", 1)[0]
     dark_theme = final_theme.split('html[data-theme="dark"]', 1)[1].split("}", 1)[0]
     light = css_vars(root_block)
@@ -188,21 +194,21 @@ def test_focus_and_accent_tokens_meet_wcag_aa_contrast():
 
 
 def test_final_dark_mode_override_covers_blue_tinted_component_surfaces():
-    final_theme = CSS.split("/* Mataba 2.9.8:", 1)[1]
+    final_theme = CSS.split("/* Mataba 2.9.9:", 1)[1]
     for selector in (
         "html[data-theme=\"dark\"] .notice-info",
         "html[data-theme=\"dark\"] .drop-zone:hover",
         "html[data-theme=\"dark\"] .upload-zone:hover",
-        "html[data-theme=\"dark\"] .segmented-control button.selected",
+        ".segmented-control button.selected",
         "html[data-theme=\"dark\"] .source-tag.cloud",
         "html[data-theme=\"dark\"] .summary-icon",
         "html[data-theme=\"dark\"] .qa-icon",
+        "html[data-theme=\"dark\"] .field-label input",
         "html[data-theme=\"dark\"] .legal-citation blockquote",
-        "html[data-theme=\"dark\"] #main-content h1:focus",
     ):
         assert selector in final_theme
-    assert "--dark-neutral-surface: #2d3336;" in final_theme
-    assert "--dark-neutral-hover: #343b3e;" in final_theme
+    assert "--dark-neutral-surface: #2c3337;" in final_theme
+    assert "--dark-neutral-hover: #353d41;" in final_theme
     assert "background: var(--dark-neutral-surface) !important;" in final_theme
     assert "background: var(--dark-neutral-hover) !important;" in final_theme
     assert "accent-color: var(--accent);" in final_theme
@@ -210,12 +216,28 @@ def test_final_dark_mode_override_covers_blue_tinted_component_surfaces():
 
 
 def test_font_scale_is_consistent_at_initial_and_final_stylesheet_rules():
-    assert CSS.count('html[data-font-size="small"] { font-size: .85em; }') >= 2
-    assert CSS.count('html[data-font-size="medium"] { font-size: 1.25em; }') >= 2
-    assert CSS.count('html[data-font-size="large"] { font-size: 1.5em; }') >= 2
+    assert CSS.count('html[data-font-size="small"] { font-size: .85em; }') >= 1
+    assert CSS.count('html[data-font-size="medium"] { font-size: 1.25em; }') >= 1
+    assert CSS.count('html[data-font-size="large"] { font-size: 1.5em; }') >= 1
 
 
 def test_stylesheet_cache_version_is_updated_on_app_and_landing_pages():
     landing = (ROOT / "app" / "templates" / "landing.html").read_text(encoding="utf-8")
-    assert "/css/styles.css?v=2.9.8" in HTML
-    assert "/css/styles.css?v=2.9.8" in landing
+    assert "/css/styles.css?v=2.9.9" in HTML
+    assert "/css/styles.css?v=2.9.9" in landing
+
+
+def test_pointer_setting_changes_do_not_restore_keyboard_focus_ring():
+    assert 'async function handleClick(button, keyboardActivation = false)' in MAIN
+    assert 'if (keyboardActivation) app.querySelector(`[data-action="set-theme"]' in MAIN
+    assert 'if (keyboardActivation) app.querySelector(`[data-action="set-font"]' in MAIN
+    assert 'handleClick(button, event.detail === 0)' in MAIN
+
+
+def test_dark_theme_has_no_gold_focus_or_selection_surfaces():
+    final_theme = CSS.split("/* Mataba 2.9.9:", 1)[1]
+    forbidden_gold = ("#f0d79c", "#e5ca91", "#e0c58c", "#d8c18f", "#ead7ad", "#635638")
+    assert all(color not in final_theme.lower() for color in forbidden_gold)
+    assert "--focus-ring: #d8dfe2;" in final_theme
+    assert "--accent: #d1d8db;" in final_theme
+    assert "background: #48545a;" in final_theme

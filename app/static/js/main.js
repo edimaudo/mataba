@@ -384,7 +384,7 @@ async function askOffline(form) {
         render();
     }
 }
-async function handleClick(button) {
+async function handleClick(button, keyboardActivation = false) {
     const action = button.dataset.action;
     if (!action)
         return;
@@ -392,7 +392,7 @@ async function handleClick(button) {
         state.language = action === 'set-language' ? button.dataset.value : state.language === 'fr' ? 'en' : 'fr';
         state.draft.language = state.language;
         render();
-        app.querySelector('[data-action="set-language"][data-value="' + state.language + '"]')?.focus();
+        if (keyboardActivation) app.querySelector('[data-action="set-language"][data-value="' + state.language + '"]')?.focus();
     }
     else if (action === 'navigate') {
         const nextSection = button.dataset.section;
@@ -486,7 +486,7 @@ async function handleClick(button) {
     else if (action === 'report-tab') {
         state.reportTab = button.dataset.value;
         render();
-        app.querySelector(`[data-action="report-tab"][data-value="${state.reportTab}"]`)?.focus();
+        if (keyboardActivation) app.querySelector(`[data-action="report-tab"][data-value="${state.reportTab}"]`)?.focus();
     }
     else if (action === 'delete-review') {
         const id = button.dataset.id || state.activeReviewId;
@@ -504,19 +504,19 @@ async function handleClick(button) {
     else if (action === 'set-theme') {
         state.theme = button.dataset.value;
         render();
-        app.querySelector(`[data-action="set-theme"][data-value="${state.theme}"]`)?.focus();
+        if (keyboardActivation) app.querySelector(`[data-action="set-theme"][data-value="${state.theme}"]`)?.focus();
     }
     else if (action === 'set-font') {
         state.fontSize = button.dataset.value;
         render();
-        app.querySelector(`[data-action="set-font"][data-value="${state.fontSize}"]`)?.focus();
+        if (keyboardActivation) app.querySelector(`[data-action="set-font"][data-value="${state.fontSize}"]`)?.focus();
     }
 }
 app.addEventListener('click', (event) => {
     const target = event.target;
     const button = target.closest('[data-action]');
     if (button)
-        void handleClick(button).catch((error) => notice('error', error instanceof Error ? error.message : 'Action failed.'));
+        void handleClick(button, event.detail === 0).catch((error) => notice('error', error instanceof Error ? error.message : 'Action failed.'));
 });
 app.addEventListener('change', (event) => {
     const target = event.target;

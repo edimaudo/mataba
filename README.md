@@ -1,4 +1,4 @@
-# Mataba 2.9.8
+# Mataba 2.9.9
 
 Mataba is a Canadian contract-review application. It is one **Python + FastAPI** application. The browser interface is plain **HTML, CSS and native JavaScript** served by that same FastAPI application. Firebase AI Logic is the cloud Gemini integration.
 
@@ -193,3 +193,6 @@ PDF page references are preserved. DOCX page references are only available where
 - Version 2.9.7: refined dark-mode surfaces to remove blue-tinted section and control highlights; introduced neutral, high-contrast focus and selection treatments; standardized Inter across document and form controls; reaffirmed Medium text scale at 1em. WCAG AA contrast checks cover core text and focus/accent tokens, but full WCAG conformance still requires manual and assistive-technology testing.
 
 - Version 2.9.8: replaced the partial dark-mode cleanup with a final override covering the legacy blue-tinted backgrounds on selected tabs, hover states, upload elements, badges, icon surfaces and information panels. Dark-mode form surfaces and browser autofill are neutralized; checkbox/radio accents and keyboard focus use a warm neutral accent. Updated text scale to Small 0.85em, Medium 1.25em and Large 1.5em. Added a stylesheet version query to avoid stale cached CSS.
+
+
+- Version 2.9.9: removed the gold global focus ring and gold selected/hover surfaces that caused pervasive yellow boxes in dark mode. Focus outlines are now neutral and appear only for keyboard-style focus; pointer-driven settings changes no longer programmatically refocus the rerendered control. Dark-mode buttons, badges, warning panels, upload zones, status tags, and selection highlights use neutral graphite tones. The Small, Medium and Large type scale remains 0.85em, 1.25em and 1.5em.

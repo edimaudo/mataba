@@ -25,7 +25,7 @@ STATIC_DIR = APP_DIR / "static"
 
 app = FastAPI(
     title="Mataba",
-    version="2.9.8",
+    version="2.9.9",
     description=(
         "Python FastAPI application serving Mataba's pages, static JavaScript and API routes. "
         "Firebase AI Logic is the cloud inference integration."
