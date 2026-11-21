@@ -912,3 +912,148 @@ html[data-theme="dark"] .button-primary { background: #9ab6c7; border-color: #9a
   .app-primary-nav { gap: 15px; }
   .app-primary-nav .nav-item { font-size: .72rem; }
 }
+
+/* Accessibility and theme refinement — Mataba 2.9.7 */
+:root {
+  --focus-ring: #775b2c;
+  --accent: #705321;
+  --accent-soft: #f3eee4;
+  --control-border: #737f89;
+}
+html[data-theme="dark"] {
+  --focus-ring: #e0c58c;
+  --accent: #e0c58c;
+  --accent-soft: #34312a;
+  --control-border: #78838c;
+  --blue: #c3cbd0;
+  --blue-2: #30373c;
+}
+html, body, button, input, select, textarea {
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+html { font-size: 1em; }
+html[data-font-size="small"] { font-size: .75em; }
+html[data-font-size="medium"] { font-size: 1em; }
+html[data-font-size="large"] { font-size: 1.25em; }
+:focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 3px;
+  box-shadow: none !important;
+}
+#main-content:focus { outline: 3px solid var(--focus-ring) !important; outline-offset: -3px; }
+.field-label input, .field-label select, .field-label textarea,
+.paste-contract-label textarea, .manual-redaction-row input,
+.top-search input, input[type="file"] {
+  font-family: inherit;
+}
+.field-label input, .field-label select, .field-label textarea,
+.paste-contract-label textarea, .manual-redaction-row input {
+  border-color: var(--control-border);
+}
+.field-label input:focus, .field-label select:focus,
+.field-label textarea:focus, .paste-contract-label textarea:focus,
+.manual-redaction-row input:focus {
+  border-color: var(--focus-ring) !important;
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 1px;
+  box-shadow: none !important;
+}
+.app-primary-nav .nav-item.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.segmented-control button.selected,
+.contract-input-tabs button.active,
+.folder-tabs button.selected,
+.report-tabs button.active {
+  color: var(--text) !important;
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+.button-tertiary {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+html[data-theme="dark"] .button-tertiary,
+html[data-theme="dark"] .button-secondary,
+html[data-theme="dark"] .button-primary {
+  box-shadow: none !important;
+}
+html[data-theme="dark"] .button-primary {
+  background: #d8c18f;
+  border-color: #d8c18f;
+  color: #24221d;
+}
+html[data-theme="dark"] .button-primary:hover:not(:disabled) {
+  background: #ead7ad;
+  border-color: #ead7ad;
+}
+html[data-theme="dark"] .notice-info,
+html[data-theme="dark"] .stat-icon.blue,
+html[data-theme="dark"] .file-icon,
+html[data-theme="dark"] .bottom-guidance,
+html[data-theme="dark"] .drop-zone.has-file,
+html[data-theme="dark"] .drop-icon,
+html[data-theme="dark"] .mini-file,
+html[data-theme="dark"] .source-tag.cloud,
+html[data-theme="dark"] .source-badge.contract,
+html[data-theme="dark"] .source-blue,
+html[data-theme="dark"] .auth-preview-block,
+html[data-theme="dark"] .panel-step > span,
+html[data-theme="dark"] .finding-category {
+  color: var(--text) !important;
+  background: #30373c !important;
+  border-color: #59636b !important;
+}
+html[data-theme="dark"] .drop-zone:hover,
+html[data-theme="dark"] .review-row:hover,
+html[data-theme="dark"] .library-card:hover,
+html[data-theme="dark"] .reference-select:hover,
+html[data-theme="dark"] .folder-tabs button:hover {
+  background: #293136 !important;
+  border-color: #78838c !important;
+}
+html[data-theme="dark"] .field-label input,
+html[data-theme="dark"] .field-label select,
+html[data-theme="dark"] .field-label textarea,
+html[data-theme="dark"] .paste-contract-label textarea,
+html[data-theme="dark"] .manual-redaction-row input,
+html[data-theme="dark"] .upload-zone,
+html[data-theme="dark"] .drop-zone {
+  background: #20272c;
+  color: #e7eaec;
+  border-color: #78838c;
+}
+html[data-theme="dark"] .field-label input::placeholder,
+html[data-theme="dark"] .field-label textarea::placeholder,
+html[data-theme="dark"] .paste-contract-label textarea::placeholder {
+  color: #b2bbc1;
+  opacity: 1;
+}
+html[data-theme="dark"] .status-pill,
+html[data-theme="dark"] .status-pill.analyzed,
+html[data-theme="dark"] .status-pill.draft,
+html[data-theme="dark"] .scan-local,
+html[data-theme="dark"] .scan-manual,
+html[data-theme="dark"] .source-tag.local,
+html[data-theme="dark"] .source-badge.reference,
+html[data-theme="dark"] .source-amber {
+  background: #343a3e !important;
+  color: #e7eaec !important;
+  border-color: #59636b !important;
+}
+html[data-theme="dark"] .inline-warning,
+html[data-theme="dark"] .inline-error,
+html[data-theme="dark"] .notice-success,
+html[data-theme="dark"] .notice-error {
+  border-width: 1px;
+}
+html[data-theme="dark"] .verified-check { color: #9ed9b9 !important; }
+html[data-theme="dark"] .finding-category,
+html[data-theme="dark"] .text-button,
+html[data-theme="dark"] .file-change,
+html[data-theme="dark"] .drop-copy em { color: #e0c58c !important; }

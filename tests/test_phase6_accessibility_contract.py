@@ -158,3 +158,29 @@ def test_revised_light_and_dark_palette_preserves_wcag_aa_text_contrast():
     assert ratio("#65717a", "#ffffff") >= 4.5
     assert ratio("#b2bbc1", "#20272c") >= 4.5
     assert ratio("#8e9aa3", "#20272c") >= 4.5
+
+
+def test_inter_is_loaded_and_applied_to_all_form_controls():
+    assert 'fonts.googleapis.com/css2?family=Inter:' in HTML
+    assert 'font-family: "Inter", ui-sans-serif' in CSS
+    assert 'html, body, button, input, select, textarea {' in CSS
+
+def test_medium_font_scale_remains_exactly_one_em():
+    assert 'html[data-font-size="medium"] { font-size: 1em; }' in CSS
+
+def test_dark_mode_uses_neutral_highlights_and_accessible_focus_ring():
+    assert '--focus-ring: #e0c58c;' in CSS
+    assert '--accent-soft: #34312a;' in CSS
+    assert 'background: #30373c !important;' in CSS
+    assert 'outline: 3px solid var(--focus-ring) !important;' in CSS
+
+def test_focus_and_accent_tokens_meet_wcag_aa_contrast():
+    refinement = CSS.split("/* Accessibility and theme refinement", 1)[1]
+    root_block = refinement.split(":root", 1)[1].split("}", 1)[0]
+    dark_theme = refinement.split('html[data-theme="dark"]', 1)[1].split("}", 1)[0]
+    light = css_vars(root_block)
+    dark = css_vars(dark_theme)
+    assert contrast_ratio(light["--focus-ring"], "#ffffff") >= 3.0
+    assert contrast_ratio(dark["--focus-ring"], "#20272c") >= 3.0
+    assert contrast_ratio("#b2bbc1", "#20272c") >= 4.5
+    assert contrast_ratio("#8e9aa3", "#20272c") >= 4.5
